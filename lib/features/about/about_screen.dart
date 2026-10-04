@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/branding/app_info.dart';
@@ -49,16 +48,6 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 18),
           Center(child: _VersionPill()),
           const SizedBox(height: 22),
-
-          // Share Button
-          Builder(
-            builder: (buttonContext) => FilledButton.icon(
-              onPressed: () => _shareApp(buttonContext),
-              icon: const Icon(Icons.share_rounded, size: 20),
-              label: const Text('Share Net Worth'),
-            ),
-          ),
-          const SizedBox(height: 24),
 
           Card(
             child: Padding(
@@ -233,19 +222,6 @@ Future<void> _openUrl(
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text('Copied — $fallback')));
-}
-
-Future<void> _shareApp(BuildContext context) async {
-  final box = context.findRenderObject() as RenderBox?;
-  await SharePlus.instance.share(
-    ShareParams(
-      text: AppInfo.shareText,
-      subject: AppInfo.name,
-      sharePositionOrigin: box == null
-          ? null
-          : box.localToGlobal(Offset.zero) & box.size,
-    ),
-  );
 }
 
 class _LinkTile extends StatelessWidget {
