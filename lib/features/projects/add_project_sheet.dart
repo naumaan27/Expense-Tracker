@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
-import '../../core/widgets/error_view.dart';
 import 'project_model.dart';
 import 'projects_repository.dart';
 
@@ -26,6 +25,7 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
   late String _selectedStream;
   DateTime? _dueDate;
   bool _submitting = false;
+  final List<String> _customStreams = [];
 
   bool get _isEditing => widget.existingProject != null;
 
@@ -45,7 +45,13 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
     _titleController = TextEditingController(text: p?.title ?? '');
     _clientController = TextEditingController(text: p?.clientName ?? '');
     _amountController = TextEditingController(
-      text: p != null ? (p.quoteAmount.paise / 100).toStringAsFixed(2) : '',
+      text: p != null
+          ? MoneyFormat.formatWithCommas(
+              p.quoteAmount.paise % 100 == 0
+                  ? '${p.quoteAmount.paise ~/ 100}'
+                  : (p.quoteAmount.paise / 100).toStringAsFixed(2),
+            )
+          : '',
     );
     _noteController = TextEditingController(text: p?.note ?? '');
     _selectedStream = p?.stream ?? 'Freelancing';
@@ -59,6 +65,50 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
     _amountController.dispose();
     _noteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _showAddCustomStreamDialog() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New Income Stream'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Stream Name',
+            hintText: 'e.g. Photography, Mentorship, YouTube',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final val = controller.text.trim();
+              if (val.isNotEmpty) {
+                Navigator.of(ctx).pop(val);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        if (!_customStreams.contains(result)) {
+          _customStreams.add(result);
+        }
+        _selectedStream = result;
+      });
+    }
   }
 
   Future<void> _pickDueDate() async {
@@ -77,7 +127,8 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final parsedAmount = double.tryParse(_amountController.text.trim());
+    final cleanText = _amountController.text.replaceAll(',', '').trim();
+    final parsedAmount = double.tryParse(cleanText);
     if (parsedAmount == null || parsedAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid quote amount.')),
@@ -88,7 +139,7 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
     setState(() => _submitting = true);
     try {
       final repo = ref.read(projectsRepositoryProvider);
-      final money = Money.fromUnits(parsedAmount);
+      final money = Money.fromRupees(parsedAmount);
 
       if (_isEditing) {
         await repo.updateProject(
@@ -136,6 +187,15 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+
+    final allProjects = ref.watch(allProjectsStreamProvider).valueOrNull ?? const <Project>[];
+    final existingStreams = allProjects.map((p) => p.stream).toSet();
+    final allStreams = {
+      ..._suggestedStreams,
+      ...existingStreams,
+      ..._customStreams,
+      if (_selectedStream.isNotEmpty) _selectedStream,
+    }.toList();
 
     return Padding(
       padding: EdgeInsets.only(
@@ -208,16 +268,23 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
-                children: _suggestedStreams.map((stream) {
-                  final isSelected = _selectedStream == stream;
-                  return ChoiceChip(
-                    label: Text(stream),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      if (selected) setState(() => _selectedStream = stream);
-                    },
-                  );
-                }).toList(),
+                children: [
+                  ...allStreams.map((stream) {
+                    final isSelected = _selectedStream == stream;
+                    return ChoiceChip(
+                      label: Text(stream),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        if (selected) setState(() => _selectedStream = stream);
+                      },
+                    );
+                  }),
+                  ActionChip(
+                    avatar: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Custom Stream'),
+                    onPressed: _showAddCustomStreamDialog,
+                  ),
+                ],
               ),
               const SizedBox(height: 14),
 
@@ -225,6 +292,17 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
               TextFormField(
                 controller: _amountController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: const [ThousandsSeparatorInputFormatter()],
+                onChanged: (val) {
+                  final formatted = MoneyFormat.formatWithCommas(val);
+                  if (formatted != val) {
+                    _amountController.value = TextEditingValue(
+                      text: formatted,
+                      selection: TextSelection.collapsed(offset: formatted.length),
+                      composing: TextRange.empty,
+                    );
+                  }
+                },
                 decoration: const InputDecoration(
                   labelText: 'Total Quote Amount *',
                   hintText: '0.00',
@@ -233,7 +311,7 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) return 'Please enter the quoted amount';
-                  final num = double.tryParse(val.trim());
+                  final num = double.tryParse(val.replaceAll(',', '').trim());
                   if (num == null || num <= 0) return 'Enter a positive amount';
                   return null;
                 },

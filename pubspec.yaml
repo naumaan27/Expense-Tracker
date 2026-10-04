@@ -151,6 +151,7 @@ flutter:
   # asset bundle into a real filesystem path before every OCR call; without
   # it declared as an asset, that copy step throws on every attempt.
   assets:
+    - assets/branding/
     - assets/tessdata/eng.traineddata
     - assets/tessdata_config.json
 

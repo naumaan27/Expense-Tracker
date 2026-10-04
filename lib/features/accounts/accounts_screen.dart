@@ -12,6 +12,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import 'add_account_sheet.dart';
+import 'credit_card_limit_service.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
 /// Total money + per-account balances, grouped Cash · Bank · Cards.
@@ -304,10 +305,60 @@ class _AccountTile extends ConsumerWidget {
       subtitle = _subtitle(theme, 'Draws from ${bank?.name ?? 'bank'}');
       trailing = _LinkedChip();
     } else if (_owesLikeCredit) {
-      subtitle = _subtitle(
-        theme,
-        account.currentBalance.isNegative ? 'Outstanding' : 'Paid off',
-      );
+      if (_isCreditCard) {
+        final limit = ref.watch(creditCardLimitProvider(account.id)).valueOrNull;
+        if (limit != null && limit.isPositive) {
+          final util = CreditCardUtilization(
+            limit: limit,
+            utilized: account.currentBalance.isNegative ? account.currentBalance.abs : const Money.zero(),
+          );
+          subtitle = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Limit: ${MoneyFormat.symbol(limit)} · ${util.percentage.toStringAsFixed(0)}% used',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: (util.status == CreditHealthStatus.extensivelyUsed || util.status == CreditHealthStatus.overLimit)
+                          ? util.statusColor
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: (util.status == CreditHealthStatus.extensivelyUsed || util.status == CreditHealthStatus.overLimit)
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  if (util.status == CreditHealthStatus.extensivelyUsed || util.status == CreditHealthStatus.overLimit) ...[
+                    const SizedBox(width: 4),
+                    Icon(util.statusIcon, size: 14, color: util.statusColor),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: util.ratio.clamp(0.0, 1.0),
+                  minHeight: 3.5,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(util.statusColor),
+                ),
+              ),
+            ],
+          );
+        } else {
+          subtitle = _subtitle(
+            theme,
+            account.currentBalance.isNegative ? 'Outstanding' : 'Paid off',
+          );
+        }
+      } else {
+        subtitle = _subtitle(
+          theme,
+          account.currentBalance.isNegative ? 'Outstanding' : 'Paid off',
+        );
+      }
       trailing = BalanceText(
         account.currentBalance,
         currency: _currency,

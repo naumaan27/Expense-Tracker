@@ -10,6 +10,7 @@ import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../settings/currency_picker_sheet.dart';
 import '../tags/tag_picker_sheet.dart';
+import 'custom_recurrence.dart';
 
 /// Opens the add/edit sheet. Pass [existing] to edit that rule instead of
 /// creating a new one, or [prefillFrom] to seed a new rule's fields from a
@@ -98,6 +99,9 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
   int? _categoryId;
   int? _toAccountId;
   RecurringFrequency _frequency = RecurringFrequency.monthly;
+  bool _isCustomFrequency = false;
+  int _customInterval = 3;
+  String _customUnit = 'months';
   late DateTime _dueDate;
   double _notifyDays = 3;
   bool _isEstimate = false;
@@ -146,6 +150,13 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     _amountController.setAmount(e.amount);
     _payeeController.text = e.payee ?? '';
     _noteController.text = e.note ?? '';
+    final custom = CustomRecurrence.parse(e.note);
+    if (custom != null) {
+      _isCustomFrequency = true;
+      _customInterval = custom.interval;
+      _customUnit = custom.unit;
+      _noteController.text = CustomRecurrence.cleanNote(e.note);
+    }
     _ruleKind = e.toAccountId != null
         ? _RuleKind.goalOrLoan
         : (e.kind == CategoryKind.income
@@ -272,7 +283,29 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     final payeeText = _allowsPayee ? _payeeController.text.trim() : '';
     final payee = payeeText.isEmpty ? null : payeeText;
     final noteText = _noteController.text.trim();
-    final note = noteText.isEmpty ? null : noteText;
+    String? note;
+    RecurringFrequency freqToSave = _frequency;
+    if (_isCustomFrequency) {
+      final custom = CustomRecurrence(
+        interval: _customInterval,
+        unit: _customUnit,
+      );
+      note = CustomRecurrence.embedInNote(
+        noteText.isEmpty ? null : noteText,
+        custom,
+      );
+      if (_customUnit.startsWith('day')) {
+        freqToSave = RecurringFrequency.daily;
+      } else if (_customUnit.startsWith('week')) {
+        freqToSave = RecurringFrequency.weekly;
+      } else if (_customUnit.startsWith('month')) {
+        freqToSave = RecurringFrequency.monthly;
+      } else if (_customUnit.startsWith('year')) {
+        freqToSave = RecurringFrequency.yearly;
+      }
+    } else {
+      note = noteText.isEmpty ? null : noteText;
+    }
 
     Money? promoAmount;
     int? promoOccurrences;
@@ -321,7 +354,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               toAccountId: isGoalOrLoan ? _toAccountId : null,
               payee: payee,
               note: note,
-              frequency: _frequency,
+              frequency: freqToSave,
               nextDueDate: _dueDate,
               notifyDaysBefore: _notifyDays.round(),
               isEstimate: _isEstimate,
@@ -343,7 +376,7 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
               toAccountId: isGoalOrLoan ? _toAccountId : null,
               payee: payee,
               note: note,
-              frequency: _frequency,
+              frequency: freqToSave,
               startsOn: _dueDate,
               notifyDaysBefore: _notifyDays.round(),
               isEstimate: _isEstimate,
@@ -687,30 +720,161 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
             // font scale — scroll rather than let it overflow (GitHub #14).
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: SegmentedButton<RecurringFrequency>(
+              child: SegmentedButton<String>(
                 segments: const [
-                  ButtonSegment(
-                    value: RecurringFrequency.daily,
-                    label: Text('Daily'),
-                  ),
-                  ButtonSegment(
-                    value: RecurringFrequency.weekly,
-                    label: Text('Weekly'),
-                  ),
-                  ButtonSegment(
-                    value: RecurringFrequency.biweekly,
-                    label: Text('2 weeks'),
-                  ),
-                  ButtonSegment(
-                    value: RecurringFrequency.monthly,
-                    label: Text('Monthly'),
-                  ),
+                  ButtonSegment(value: 'daily', label: Text('Daily')),
+                  ButtonSegment(value: 'weekly', label: Text('Weekly')),
+                  ButtonSegment(value: 'biweekly', label: Text('2 weeks')),
+                  ButtonSegment(value: 'monthly', label: Text('Monthly')),
+                  ButtonSegment(value: 'custom', label: Text('Custom')),
                 ],
-                selected: {_frequency},
+                selected: {_isCustomFrequency ? 'custom' : _frequency.name},
                 showSelectedIcon: false,
-                onSelectionChanged: (s) => setState(() => _frequency = s.first),
+                onSelectionChanged: (s) {
+                  final v = s.first;
+                  setState(() {
+                    if (v == 'custom') {
+                      _isCustomFrequency = true;
+                    } else {
+                      _isCustomFrequency = false;
+                      _frequency = RecurringFrequency.values.firstWhere((e) => e.name == v);
+                    }
+                  });
+                },
               ),
             ),
+            if (_isCustomFrequency) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: cs.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'REPEAT EVERY',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: cs.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            CustomRecurrence(
+                              interval: _customInterval,
+                              unit: _customUnit,
+                            ).format(),
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: cs.onPrimaryContainer,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: cs.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: cs.outline),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove_rounded, size: 18),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: _customInterval > 1
+                                    ? () => setState(() => _customInterval--)
+                                    : null,
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                child: Text(
+                                  '$_customInterval',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.add_rounded, size: 18),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: _customInterval < 99
+                                    ? () => setState(() => _customInterval++)
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: cs.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: cs.outline),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _customUnit,
+                                isExpanded: true,
+                                icon: const Icon(Icons.arrow_drop_down_rounded),
+                                items: const [
+                                  DropdownMenuItem(value: 'days', child: Text('Days')),
+                                  DropdownMenuItem(value: 'weeks', child: Text('Weeks')),
+                                  DropdownMenuItem(value: 'months', child: Text('Months')),
+                                  DropdownMenuItem(value: 'years', child: Text('Years')),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) setState(() => _customUnit = val);
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Quick Presets:',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        _presetChip('3 Months', 3, 'months'),
+                        _presetChip('6 Months', 6, 'months'),
+                        _presetChip('1 Year', 1, 'years'),
+                        _presetChip('3 Years', 3, 'years'),
+                        _presetChip('5 Years', 5, 'years'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             InkWell(
               onTap: _pickDate,
@@ -937,6 +1101,29 @@ class _RecurringRuleSheetState extends ConsumerState<RecurringRuleSheet> {
     if (c.parentId == null) return c.name;
     final parent = byId[c.parentId];
     return parent == null ? c.name : '${parent.name} › ${c.name}';
+  }
+
+  Widget _presetChip(String label, int interval, String unit) {
+    final isSelected = _customInterval == interval && _customUnit == unit;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) {
+        setState(() {
+          _customInterval = interval;
+          _customUnit = unit;
+        });
+      },
+      labelStyle: TextStyle(
+        fontSize: 12,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        color: isSelected ? cs.onPrimaryContainer : cs.onSurface,
+      ),
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
   }
 
   static String _ordinalSuffix(int day) {

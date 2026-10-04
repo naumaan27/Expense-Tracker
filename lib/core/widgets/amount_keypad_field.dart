@@ -347,7 +347,7 @@ class AmountKeypadDisplayBox extends StatelessWidget {
         isFocused: active,
         isEmpty: text.isEmpty,
         child: Text(
-          text,
+          MoneyFormat.formatWithCommas(text),
           key: displayKey,
           style:
               style ??

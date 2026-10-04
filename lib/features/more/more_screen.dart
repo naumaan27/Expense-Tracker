@@ -192,7 +192,7 @@ class MoreScreen extends ConsumerWidget {
           Icons.info_outline_rounded,
           'About ${AppInfo.name}',
           route: '/more/about',
-          subtitle: 'Version ${AppInfo.version} · Yash Patil',
+          subtitle: 'Version ${AppInfo.version} · ${AppInfo.developer}',
         ),
       ]),
     ];

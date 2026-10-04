@@ -26,24 +26,22 @@ class AppInfo {
   static const versionLabel = '$version (build $buildNumber)';
 
   // ── Developer ──────────────────────────────────────────────────────────────
-  static const developer = 'Yash Patil';
-  static const developerRole = 'Design & engineering';
+  // >>> EDIT YOUR DETAILS HERE <<<
+  static const developer = 'Abdul Wadood Naumaan';
+  static const developerRole = 'Developer & Creator';
 
-  static const githubHandle = 'PATILYASHH';
-  static const githubUrl = 'https://github.com/PATILYASHH';
+  static const linkedinHandle = 'nauman';
+  static const linkedinUrl = 'https://www.linkedin.com/in/nauman/';
 
-  static const linkedinHandle = 'patilyasshh';
-  static const linkedinUrl = 'https://www.linkedin.com/in/patilyasshh/';
+  static const personalEmail = 'workoholic.2718@gmail.com';
+  static const feedbackEmail = 'workoholic.2718@gmail.com';
 
-  static const sponsorUrl = 'https://github.com/sponsors/PATILYASHH';
+  static const instagramHandle = 'nauman';
+  static const instagramUrl = 'https://www.instagram.com/nauman/';
 
-  /// For bug reports, feedback and suggestions about XPENC (or any other
-  /// project) — not the developer's personal inbox.
-  static const feedbackEmail = 'feedback.yashpatil@gmail.com';
-
-  /// The developer's personal contact, for anything that isn't
-  /// project feedback.
-  static const personalEmail = 'patilyasshh@gmail.com';
+  static const githubHandle = '';
+  static const githubUrl = '';
+  static const sponsorUrl = '';
 
   // ── Project ────────────────────────────────────────────────────────────────
   /// Where this build's source lives.
@@ -77,18 +75,5 @@ class AppInfo {
   static const licenseName = 'MIT License';
   static const licenseUrl = '$repoUrl/blob/master/LICENSE';
 
-  static const copyright = '© 2026 Yash Patil';
-
-  // ── Community ──────────────────────────────────────────────────────────────
-  static const instagramHandle = 'xpenc.in';
-  static const instagramUrl = 'https://www.instagram.com/xpenc.in/';
-
-  static const whatsappChannelUrl =
-      'https://whatsapp.com/channel/0029VbDHdIx60eBiQTTW4L1y';
-
-  static const redditHandle = 'XPENC';
-  static const redditUrl = 'https://www.reddit.com/user/XPENC/';
-
-  /// Public page to leave a review — same one linked from the website.
-  static const testimonialUrl = 'https://testimonial.to/xpenc/';
+  static const copyright = '© 2026 Net Worth';
 }

@@ -1,6 +1,7 @@
 import 'dart:ui' show FontFeature;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import 'currency.dart';
@@ -160,6 +161,81 @@ class MoneyFormat {
   /// currency annotation (GitHub #85) alongside the home-currency amount.
   static String forCurrency(Money amount, Currency currency) =>
       _buildWithSymbol(currency).format(amount.rupees);
+
+  /// Formats an input buffer (e.g. `"50000.5"`) with digit-grouping commas
+  /// (e.g. `"50,000.5"` or `"50,000"` for INR) while typing.
+  static String formatWithCommas(String text) {
+    if (text.isEmpty) return text;
+    final dotIndex = text.indexOf('.');
+    final integerPart = dotIndex != -1 ? text.substring(0, dotIndex) : text;
+    final decimalPart = dotIndex != -1 ? text.substring(dotIndex) : '';
+
+    if (integerPart.isEmpty) return text;
+    final isNegative = integerPart.startsWith('-');
+    final cleanInt = integerPart.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanInt.isEmpty) return text;
+
+    final parsed = int.tryParse(cleanInt);
+    if (parsed == null) return text;
+
+    final formattedInt = NumberFormat.decimalPatternDigits(
+      locale: _localeFor(_currency),
+      decimalDigits: 0,
+    ).format(parsed);
+
+    final prefix = isNegative ? '-' : '';
+    return '$prefix$formattedInt$decimalPart';
+  }
+}
+
+/// A [TextInputFormatter] that formats numeric amount input with digit-grouping
+/// commas in real-time as the user types, preserving the cursor position.
+class ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  const ThousandsSeparatorInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+
+    // Only allow numbers and at most one decimal point
+    final text = newValue.text;
+    final dotCount = '.'.allMatches(text).length;
+    if (dotCount > 1) {
+      return oldValue;
+    }
+
+    final formatted = MoneyFormat.formatWithCommas(text);
+
+    // Keep track of cursor relative to numeric characters
+    final oldCursor = newValue.selection.baseOffset;
+    final safeCursor = oldCursor < 0 ? text.length : oldCursor;
+    final charsBeforeCursor = text.substring(0, safeCursor.clamp(0, text.length));
+    final digitsBeforeCursor =
+        charsBeforeCursor.replaceAll(RegExp(r'[^0-9.]'), '').length;
+
+    var newCursor = 0;
+    var digitsCounted = 0;
+    for (var i = 0; i < formatted.length; i++) {
+      if (digitsCounted >= digitsBeforeCursor) {
+        break;
+      }
+      if (RegExp(r'[0-9.]').hasMatch(formatted[i])) {
+        digitsCounted++;
+      }
+      newCursor = i + 1;
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: newCursor.clamp(0, formatted.length)),
+      composing: TextRange.empty,
+    );
+  }
 }
 
 /// Amounts must render with tabular figures so columns of numbers line up.

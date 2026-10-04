@@ -9,6 +9,7 @@ import '../../core/widgets/money_text.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'custom_recurrence.dart';
 import 'recurring_rule_sheet.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
@@ -269,6 +270,10 @@ class _RuleTile extends ConsumerWidget {
   }
 
   static String _frequencyLabel(RecurringRuleRow r) {
+    final custom = CustomRecurrence.parse(r.note);
+    if (custom != null) {
+      return custom.format();
+    }
     switch (r.frequency) {
       case RecurringFrequency.daily:
         return 'Daily';

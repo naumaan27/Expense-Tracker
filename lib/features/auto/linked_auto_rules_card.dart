@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
+import '../../data/database.dart';
 import '../../data/providers.dart';
+import 'custom_recurrence.dart';
 import 'recurring_rule_sheet.dart';
 
 /// The Auto rules paying into goal/loan [accountId], shown on that goal's or
@@ -102,7 +104,7 @@ class LinkedAutoRulesCard extends ConsumerWidget {
                   title: Text(r.name),
                   subtitle: Text(
                     r.isActive
-                        ? '${_frequencyLabel(r.frequency.name)} · from '
+                        ? '${_frequencyLabel(r)} · from '
                               '${accountMap[r.accountId]?.name ?? '—'} · next '
                               '${DateFormat('d MMM yyyy').format(r.nextDueDate)}'
                         : 'Paused',
@@ -130,12 +132,18 @@ class LinkedAutoRulesCard extends ConsumerWidget {
     );
   }
 
-  static String _frequencyLabel(String name) => switch (name) {
-    'daily' => 'Daily',
-    'weekly' => 'Weekly',
-    'biweekly' => 'Every 2 weeks',
-    'monthly' => 'Monthly',
-    'yearly' => 'Yearly',
-    _ => name,
-  };
+  static String _frequencyLabel(RecurringRuleRow r) {
+    final custom = CustomRecurrence.parse(r.note);
+    if (custom != null) {
+      return custom.format();
+    }
+    return switch (r.frequency.name) {
+      'daily' => 'Daily',
+      'weekly' => 'Weekly',
+      'biweekly' => 'Every 2 weeks',
+      'monthly' => 'Monthly',
+      'yearly' => 'Yearly',
+      _ => r.frequency.name,
+    };
+  }
 }

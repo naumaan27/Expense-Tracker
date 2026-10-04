@@ -11,6 +11,7 @@ import '../../core/widgets/transaction_history.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
+import 'custom_recurrence.dart';
 import 'recurring_rule_sheet.dart';
 import '../../core/widgets/nav_bar_inset.dart';
 
@@ -173,7 +174,7 @@ class AutoRuleDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
-          if (rule.note != null && rule.note!.trim().isNotEmpty) ...[
+          if (CustomRecurrence.cleanNote(rule.note).isNotEmpty) ...[
             const SizedBox(height: 20),
             Card(
               child: Padding(
@@ -190,7 +191,10 @@ class AutoRuleDetailScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(rule.note!, style: theme.textTheme.bodyMedium),
+                    Text(
+                      CustomRecurrence.cleanNote(rule.note),
+                      style: theme.textTheme.bodyMedium,
+                    ),
                   ],
                 ),
               ),
@@ -252,6 +256,10 @@ class AutoRuleDetailScreen extends ConsumerWidget {
       Divider(height: 1, color: theme.colorScheme.outline);
 
   static String _frequencyLabel(RecurringRuleRow r) {
+    final custom = CustomRecurrence.parse(r.note);
+    if (custom != null) {
+      return custom.format();
+    }
     switch (r.frequency) {
       case RecurringFrequency.daily:
         return 'Daily';

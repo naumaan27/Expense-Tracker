@@ -25,7 +25,12 @@ class ProjectDetailScreen extends ConsumerWidget {
 
     return projectsAsync.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, st) => Scaffold(body: ErrorView(error: e, stackTrace: st)),
+      error: (e, _) => Scaffold(
+        body: ErrorView(
+          title: 'Failed to load project',
+          message: e.toString(),
+        ),
+      ),
       data: (projects) {
         final project = projects.where((p) => p.id == projectId).firstOrNull;
         if (project == null) {

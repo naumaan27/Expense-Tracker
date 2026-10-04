@@ -39,7 +39,9 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
     // Pre-fill with remaining pending amount if positive
     final defaultPaise = widget.pendingAmount.isPositive ? widget.pendingAmount.paise : 0;
     _amountController = TextEditingController(
-      text: defaultPaise > 0 ? (defaultPaise / 100).toStringAsFixed(2) : '',
+      text: defaultPaise > 0
+          ? MoneyFormat.formatWithCommas((defaultPaise / 100).toStringAsFixed(2))
+          : '',
     );
   }
 
@@ -71,7 +73,8 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
       return;
     }
 
-    final parsedAmount = double.tryParse(_amountController.text.trim());
+    final cleanText = _amountController.text.replaceAll(',', '').trim();
+    final parsedAmount = double.tryParse(cleanText);
     if (parsedAmount == null || parsedAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid payment amount.')),
@@ -82,7 +85,7 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
     setState(() => _submitting = true);
     try {
       final repo = ref.read(projectsRepositoryProvider);
-      final money = Money.fromUnits(parsedAmount);
+      final money = Money.fromRupees(parsedAmount);
 
       await repo.recordPayment(
         project: widget.project,
@@ -98,7 +101,7 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Recorded ${MoneyFormat.full(money)} received! Added to your account.',
+              'Recorded ${MoneyFormat.symbol(money)} received! Added to your account.',
             ),
           ),
         );
@@ -118,6 +121,7 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final accounts = ref.watch(accountsProvider).valueOrNull ?? const <AccountRow>[];
     final incomeCategories =
         ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ??
             const <CategoryRow>[];
@@ -198,6 +202,17 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
               TextFormField(
                 controller: _amountController,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: const [ThousandsSeparatorInputFormatter()],
+                onChanged: (val) {
+                  final formatted = MoneyFormat.formatWithCommas(val);
+                  if (formatted != val) {
+                    _amountController.value = TextEditingValue(
+                      text: formatted,
+                      selection: TextSelection.collapsed(offset: formatted.length),
+                      composing: TextRange.empty,
+                    );
+                  }
+                },
                 decoration: const InputDecoration(
                   labelText: 'Amount Received *',
                   hintText: '0.00',
@@ -206,7 +221,7 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) return 'Enter the amount received';
-                  final num = double.tryParse(val.trim());
+                  final num = double.tryParse(val.replaceAll(',', '').trim());
                   if (num == null || num <= 0) return 'Enter a positive amount';
                   return null;
                 },
@@ -215,7 +230,7 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
 
               // Account Picker
               DropdownButtonFormField<int>(
-                value: _selectedAccountId,
+                initialValue: _selectedAccountId,
                 decoration: const InputDecoration(
                   labelText: 'Deposit into Account *',
                   prefixIcon: Icon(Icons.account_balance_rounded),
@@ -234,7 +249,7 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
 
               // Category Picker (Optional)
               DropdownButtonFormField<int?>(
-                value: _selectedCategoryId,
+                initialValue: _selectedCategoryId,
                 decoration: const InputDecoration(
                   labelText: 'Income Category (Optional)',
                   prefixIcon: Icon(Icons.category_outlined),

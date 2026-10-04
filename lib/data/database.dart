@@ -12,6 +12,7 @@ import '../core/money.dart';
 import '../core/security/passcode.dart';
 import '../core/security/totp.dart';
 import '../core/security/unlock_method.dart';
+import '../features/auto/custom_recurrence.dart';
 import '../features/message_capture/parser/bank_message.dart';
 import '../features/message_capture/parser/message_parser.dart';
 import 'currency_conversion.dart';
@@ -4816,7 +4817,34 @@ class AppDatabase extends _$AppDatabase {
     DateTime from, {
     int? dayOfMonth,
     int? monthOfYear,
+    String? note,
   }) {
+    final custom = CustomRecurrence.parse(note);
+    if (custom != null) {
+      final interval = custom.interval > 0 ? custom.interval : 1;
+      final unit = custom.unit.toLowerCase();
+      if (unit.startsWith('day')) {
+        return DateTime(from.year, from.month, from.day + interval);
+      } else if (unit.startsWith('week')) {
+        return DateTime(from.year, from.month, from.day + (7 * interval));
+      } else if (unit.startsWith('month')) {
+        final totalMonths = from.year * 12 + (from.month - 1) + interval;
+        final newYear = totalMonths ~/ 12;
+        final newMonth = (totalMonths % 12) + 1;
+        final targetDay = dayOfMonth ?? from.day;
+        final lastDay = DateTime(newYear, newMonth + 1, 0).day;
+        final day = targetDay > lastDay ? lastDay : targetDay;
+        return DateTime(newYear, newMonth, day);
+      } else if (unit.startsWith('year')) {
+        final newYear = from.year + interval;
+        final newMonth = monthOfYear ?? from.month;
+        final targetDay = dayOfMonth ?? from.day;
+        final lastDay = DateTime(newYear, newMonth + 1, 0).day;
+        final day = targetDay > lastDay ? lastDay : targetDay;
+        return DateTime(newYear, newMonth, day);
+      }
+    }
+
     switch (frequency) {
       case RecurringFrequency.daily:
         return DateTime(from.year, from.month, from.day + 1);
@@ -5002,6 +5030,7 @@ class AppDatabase extends _$AppDatabase {
         rule.nextDueDate,
         dayOfMonth: rule.dayOfMonth,
         monthOfYear: rule.monthOfYear,
+        note: rule.note,
       );
       await (update(recurringRules)..where((r) => r.id.equals(ruleId))).write(
         RecurringRulesCompanion(
@@ -5070,6 +5099,7 @@ class AppDatabase extends _$AppDatabase {
                 next,
                 dayOfMonth: rule.dayOfMonth,
                 monthOfYear: rule.monthOfYear,
+                note: rule.note,
               );
             }
             if (result.loanCleared) {

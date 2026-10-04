@@ -34,7 +34,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
       ),
       body: projectsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => ErrorView(error: e, stackTrace: st),
+        error: (e, _) => ErrorView(
+          title: 'Failed to load projects',
+          message: e.toString(),
+        ),
         data: (projects) {
           final allPayments = allPaymentsAsync.valueOrNull ?? const <ProjectPayment>[];
 
@@ -269,13 +272,22 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  '$percent% · Received ${MoneyFormat.compact(Money(receivedPaise))}',
+                                  '$percent% · Rec: ${MoneyFormat.compact(Money(receivedPaise))}',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.green[700],
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
+                                if (pendingPaise > 0)
+                                  Text(
+                                    'Pending: ${MoneyFormat.compact(Money(pendingPaise))}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: cs.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 Text(
                                   'Quote: ${MoneyFormat.compact(prj.quoteAmount)}',
                                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),

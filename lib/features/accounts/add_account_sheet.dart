@@ -11,6 +11,7 @@ import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart';
 import '../settings/currency_picker_sheet.dart';
+import 'credit_card_limit_service.dart';
 
 /// Preset colours for an account. Plain ints — colour here is decorative,
 /// not a money-direction signal.
@@ -56,6 +57,8 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   final _last4Controller = TextEditingController();
   final _last4Focus = FocusNode();
   final _amountController = AmountKeypadController();
+  final _limitController = AmountKeypadController();
+  final _amountGroup = AmountKeypadFieldGroup();
 
   AccountType _type = AccountType.cash;
   CardKind _cardKind = CardKind.credit;
@@ -63,6 +66,10 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   int _colorValue = _presetColors.first;
   String _iconKey = 'cash';
   bool _submitting = false;
+
+  int _statementDay = 1;
+  int _dueDay = 20;
+  final int _notifyDays = 3;
 
   /// Null = parent currency (the default for every account). Never offered
   /// for a debit card / UPI instrument, which always mirrors the account it
@@ -78,6 +85,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
     _last4Controller.dispose();
     _last4Focus.dispose();
     _amountController.dispose();
+    _limitController.dispose();
     super.dispose();
   }
 
@@ -144,7 +152,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
 
     setState(() => _submitting = true);
     try {
-      await ref
+      final newAccountId = await ref
           .read(dbProvider)
           .addAccount(
             name: name,
@@ -158,6 +166,22 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
             openingBalance: openingBalance,
             currencyCode: _isDebitCard ? null : _currencyCode,
           );
+      if (_isCreditCard) {
+        final limit = Money.tryParse(_limitController.text);
+        if (limit != null && limit.isPositive) {
+          await ref
+              .read(creditCardLimitServiceProvider)
+              .setCreditLimit(newAccountId, limit);
+        }
+        await ref
+            .read(dbProvider)
+            .upsertCreditCardDetails(
+              accountId: newAccountId,
+              statementDay: _statementDay,
+              dueDay: _dueDay,
+              notifyDaysBefore: _notifyDays,
+            );
+      }
       if (!mounted) return;
       Navigator.of(context).pop();
     } on ArgumentError catch (e) {
@@ -374,6 +398,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   }
 
   List<Widget> _creditCardFields(ThemeData theme) {
+    final cs = theme.colorScheme;
     return [
       _infoTile(
         theme,
@@ -381,9 +406,146 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
         'you owe). Paying the bill is a Transfer from your bank.',
       ),
       const SizedBox(height: 16),
-      _amountField(label: 'Outstanding (optional)'),
+      AmountKeypadField(
+        controller: _limitController,
+        group: _amountGroup,
+        label: 'Card limit (e.g. ₹1,00,000)',
+        hintText: '0.00',
+        style: Theme.of(context).textTheme.bodyLarge,
+        yieldTo: [_nameFocus, _bankNameFocus, _last4Focus],
+      ),
+      const SizedBox(height: 16),
+      _amountField(label: 'Current outstanding (optional)'),
+      const SizedBox(height: 16),
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.calendar_month_rounded, size: 20, color: cs.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'BILLING CYCLE & DUE DATE',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => _pickCycleDay(forStatement: true),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Statement / Billing Date',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'The ${_ordinalDay(_statementDay)} of every month',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.edit_calendar_rounded, size: 20, color: cs.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ),
+            const Divider(height: 16),
+            InkWell(
+              onTap: () => _pickCycleDay(forStatement: false),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Payment Due Date',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'The ${_ordinalDay(_dueDay)} of every month',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.edit_calendar_rounded, size: 20, color: cs.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
       const SizedBox(height: 16),
     ];
+  }
+
+  Future<void> _pickCycleDay({required bool forStatement}) async {
+    final now = DateTime.now();
+    final initialDay = forStatement ? _statementDay : _dueDay;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year, now.month, initialDay.clamp(1, 28)),
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 1),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        if (forStatement) {
+          _statementDay = picked.day;
+        } else {
+          _dueDay = picked.day;
+        }
+      });
+    }
+  }
+
+  String _ordinalDay(int day) {
+    if (day >= 11 && day <= 13) return '${day}th';
+    switch (day % 10) {
+      case 1:
+        return '${day}st';
+      case 2:
+        return '${day}nd';
+      case 3:
+        return '${day}rd';
+      default:
+        return '${day}th';
+    }
   }
 
   List<Widget> _debitCardFields(ThemeData theme, List<AccountRow> banks) {
@@ -426,6 +588,7 @@ class _AddAccountSheetState extends ConsumerState<AddAccountSheet> {
   Widget _amountField({required String label}) {
     return AmountKeypadField(
       controller: _amountController,
+      group: _amountGroup,
       label: label,
       hintText: '0.00',
       // Matches this sheet's other fields' text size (Name, Bank name) —
