@@ -30,14 +30,14 @@ class AppInfo {
   static const developer = 'Abdul Wadood Naumaan';
   static const developerRole = 'Developer & Creator';
 
-  static const linkedinHandle = 'nauman';
-  static const linkedinUrl = 'https://www.linkedin.com/in/nauman/';
+  static const linkedinHandle = 'abdulnaumaan';
+  static const linkedinUrl = 'https://www.linkedin.com/in/abdulnaumaan/';
 
   static const personalEmail = 'workoholic.2718@gmail.com';
   static const feedbackEmail = 'workoholic.2718@gmail.com';
 
-  static const instagramHandle = 'nauman';
-  static const instagramUrl = 'https://www.instagram.com/nauman/';
+  static const instagramHandle = 'abdulnaumaan';
+  static const instagramUrl = 'https://www.instagram.com/abdulnaumaan/';
 
   static const githubHandle = '';
   static const githubUrl = '';
@@ -58,6 +58,7 @@ class AppInfo {
 
   /// Android application id — the same on Play and F-Droid.
   static const packageId = 'com.yash.xpenc';
+
 
   /// Play Store listing. The `market://` form opens the Play Store app
   /// directly; the https one is the fallback and what gets shared.

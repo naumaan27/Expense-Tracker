@@ -31,6 +31,14 @@ class _XpencAppState extends ConsumerState<XpencApp>
   /// instead of risking a flash of real data before the lock engages.
   bool _passcodeKnown = false;
   bool _locked = false;
+  bool _firstFrameAllowed = false;
+
+  void _allowFirstFrameOnce() {
+    if (!_firstFrameAllowed) {
+      _firstFrameAllowed = true;
+      WidgetsBinding.instance.allowFirstFrame();
+    }
+  }
 
   /// When the app was last backgrounded — the anchor a non-zero
   /// [pinTimeoutMinutesProvider] is measured from on the next resume. Null
@@ -42,6 +50,8 @@ class _XpencAppState extends ConsumerState<XpencApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onStart());
+    // Safety fallback: ensure first frame is always allowed within 1.5s
+    Future.delayed(const Duration(milliseconds: 1500), _allowFirstFrameOnce);
   }
 
   @override
@@ -282,6 +292,10 @@ class _XpencAppState extends ConsumerState<XpencApp>
       _locked = hasUnlockCredential(settingsRow);
     }
 
+    if (_passcodeKnown || ready is AsyncError) {
+      _allowFirstFrameOnce();
+    }
+
     // Point the global formatters at the chosen currency before anything paints,
     // and broadcast it via CurrencyScope so every amount reformats the instant
     // it changes — even a screen kept alive on another tab.
@@ -404,7 +418,7 @@ class _XpencAppState extends ConsumerState<XpencApp>
                               ),
                           ],
                         ),
-                _ => child ?? const SizedBox.shrink(),
+                _ => const _LaunchSplash(),
               },
             ),
           ),
@@ -446,7 +460,7 @@ class _LaunchSplash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: BrandMark(size: 56)));
+    return const Scaffold(body: Center(child: BrandMark(size: 72)));
   }
 }
 

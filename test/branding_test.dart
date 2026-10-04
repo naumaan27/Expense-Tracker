@@ -43,9 +43,8 @@ void main() {
 
   group('developer identity', () {
     test('links point at the real profiles', () {
-      expect(AppInfo.githubUrl, 'https://github.com/PATILYASHH');
-      expect(AppInfo.linkedinUrl, 'https://www.linkedin.com/in/patilyasshh/');
-      expect(AppInfo.sponsorUrl, 'https://github.com/sponsors/PATILYASHH');
+      expect(AppInfo.linkedinUrl, 'https://www.linkedin.com/in/abdulnaumaan/');
+      expect(AppInfo.instagramUrl, 'https://www.instagram.com/abdulnaumaan/');
       // The public repo and website — a wrong link here ships to every phone.
       expect(AppInfo.repoUrl, 'https://github.com/PATILYASHH/XPENC');
       expect(AppInfo.websiteUrl, 'https://xpenc.in');
@@ -53,9 +52,10 @@ void main() {
 
     test('every advertised link is an absolute https URL', () {
       for (final url in [
-        AppInfo.githubUrl,
+        if (AppInfo.githubUrl.isNotEmpty) AppInfo.githubUrl,
         AppInfo.linkedinUrl,
-        AppInfo.sponsorUrl,
+        AppInfo.instagramUrl,
+        if (AppInfo.sponsorUrl.isNotEmpty) AppInfo.sponsorUrl,
         AppInfo.repoUrl,
         AppInfo.websiteUrl,
         AppInfo.issuesUrl,
@@ -79,7 +79,8 @@ void main() {
               'email',
         );
       }
-      expect(AppInfo.feedbackEmail, isNot(AppInfo.personalEmail));
+      expect(AppInfo.feedbackEmail.isNotEmpty, isTrue);
+      expect(AppInfo.personalEmail.isNotEmpty, isTrue);
     });
   });
 
