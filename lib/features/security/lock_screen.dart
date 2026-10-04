@@ -488,7 +488,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             const SizedBox(height: 8),
           ],
           Text(
-            'Enter your master recovery phrase to unlock XPENC.',
+            'Enter your master recovery phrase to unlock Net Worth.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: cs.onSurfaceVariant,
             ),

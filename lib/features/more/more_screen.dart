@@ -107,6 +107,12 @@ class MoreScreen extends ConsumerWidget {
           route: '/more/shopping',
           subtitle: 'Plan what to buy',
         ),
+        _Item(
+          Icons.assignment_outlined,
+          'Projects & Quotes',
+          route: '/more/projects',
+          subtitle: 'Freelance & teaching quotes, pending client dues',
+        ),
       ]),
       _Group('Insights', [
         _Item(

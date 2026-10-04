@@ -168,7 +168,7 @@ class XpencScoreCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'XPENC SCORE',
+                      'NET WORTH SCORE',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: cs.onSurfaceVariant,
                         letterSpacing: 0.8,
@@ -245,7 +245,7 @@ class XpencScoreScreen extends ConsumerWidget {
     final grade = result.grade;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('XPENC Score')),
+      appBar: AppBar(title: const Text('Net Worth Score')),
       body: ledger.isLoading
           ? const StatsSectionLoader(height: 240)
           : ListView(

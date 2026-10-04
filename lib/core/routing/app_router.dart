@@ -40,6 +40,8 @@ import '../../features/persons/group_balances_screen.dart';
 import '../../features/persons/group_detail_screen.dart';
 import '../../features/persons/person_detail_screen.dart';
 import '../../features/persons/persons_screen.dart';
+import '../../features/projects/project_detail_screen.dart';
+import '../../features/projects/projects_screen.dart';
 import '../../features/reports/account_report_modules.dart';
 import '../../features/reports/account_reports_screen.dart';
 import '../../features/reports/stats_modules.dart';
@@ -419,6 +421,20 @@ final appRouter = GoRouter(
                       parentNavigatorKey: _rootKey,
                       builder: (_, state) => ShoppingListScreen(
                         listId: int.parse(state.pathParameters['id']!),
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'projects',
+                  parentNavigatorKey: _rootKey,
+                  builder: (_, _) => const ProjectsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: ':id',
+                      parentNavigatorKey: _rootKey,
+                      builder: (_, state) => ProjectDetailScreen(
+                        projectId: int.parse(state.pathParameters['id']!),
                       ),
                     ),
                   ],

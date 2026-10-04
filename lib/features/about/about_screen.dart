@@ -61,7 +61,7 @@ class AboutScreen extends StatelessWidget {
                     builder: (buttonContext) => OutlinedButton.icon(
                       onPressed: () => _shareApp(buttonContext),
                       icon: const Icon(Icons.share_rounded, size: 20),
-                      label: const Text('Share XPENC'),
+                      label: const Text('Share Net Worth'),
                     ),
                   ),
                 ),

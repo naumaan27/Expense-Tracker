@@ -51,7 +51,7 @@ class SettingsScreen extends StatelessWidget {
           _ModuleTile(
             icon: Icons.verified_user_outlined,
             title: 'Permissions',
-            subtitle: 'What XPENC can access — turn each on or off',
+            subtitle: 'What Net Worth can access — turn each on or off',
             onTap: () => context.push('/more/settings/permissions'),
           ),
           _ModuleTile(
