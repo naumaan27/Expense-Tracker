@@ -21,6 +21,7 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
   late final TextEditingController _clientController;
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
+  final _initialPaymentController = TextEditingController();
 
   late String _selectedStream;
   DateTime? _dueDate;
@@ -64,6 +65,7 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
     _clientController.dispose();
     _amountController.dispose();
     _noteController.dispose();
+    _initialPaymentController.dispose();
     super.dispose();
   }
 
@@ -152,7 +154,7 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
           note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
         );
       } else {
-        await repo.createProject(
+        final id = await repo.createProject(
           title: _titleController.text.trim(),
           clientName: _clientController.text.trim(),
           stream: _selectedStream,
@@ -160,6 +162,30 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
           dueDate: _dueDate,
           note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
         );
+
+        final initialClean = _initialPaymentController.text.replaceAll(',', '').trim();
+        final initialAmount = double.tryParse(initialClean);
+        if (initialAmount != null && initialAmount > 0) {
+          final starterMoney = Money.fromRupees(initialAmount);
+          final createdProj = Project(
+            id: id,
+            title: _titleController.text.trim(),
+            clientName: _clientController.text.trim(),
+            stream: _selectedStream,
+            quoteAmount: money,
+            dueDate: _dueDate,
+            note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+            status: ProjectStatus.active,
+            createdAt: DateTime.now(),
+          );
+          await repo.recordPayment(
+            project: createdProj,
+            amount: starterMoney,
+            accountId: null, // Keep as project starter only!
+            date: DateTime.now(),
+            note: 'Project starting point / Advance received',
+          );
+        }
       }
 
       if (mounted) {
@@ -317,6 +343,33 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
                 },
               ),
               const SizedBox(height: 14),
+
+              if (!_isEditing) ...[
+                // Initial Starter / Advance Received
+                TextFormField(
+                  controller: _initialPaymentController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: const [ThousandsSeparatorInputFormatter()],
+                  onChanged: (val) {
+                    final formatted = MoneyFormat.formatWithCommas(val);
+                    if (formatted != val) {
+                      _initialPaymentController.value = TextEditingValue(
+                        text: formatted,
+                        selection: TextSelection.collapsed(offset: formatted.length),
+                        composing: TextRange.empty,
+                      );
+                    }
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Starter / Advance Received (Optional)',
+                    hintText: '0.00',
+                    helperText: 'Sets project starting point (not added to accounts yet)',
+                    prefixIcon: Icon(Icons.bookmark_added_outlined, color: Colors.green),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
 
               // Deadline / Due Date
               OutlinedButton.icon(

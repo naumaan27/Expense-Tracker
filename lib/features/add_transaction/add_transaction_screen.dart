@@ -11,7 +11,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/amount_keypad_field.dart';
 import '../../core/widgets/custom_icon_badge.dart';
 import '../../core/widgets/icon_picker_sheet.dart';
+import '../../core/widgets/keypad_scope.dart';
 import '../../core/widgets/money_text.dart';
+import '../../data/app_preferences.dart';
 import '../../data/currency_conversion.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -132,6 +134,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   /// the target; defaults to the main amount.
   late AmountKeypadController _activeAmountCtrl;
 
+  final _systemAmountFocusNode = FocusNode();
+  late final TextEditingController _systemAmountTextCtrl;
+
   int? _accountId; // expense/income: account. transfer: FROM account.
   int? _toAccountId; // transfer: TO account.
   int? _categoryId; // income/expense only.
@@ -247,6 +252,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   void initState() {
     super.initState();
     _activeAmountCtrl = _mainAmountCtrl;
+    _systemAmountTextCtrl = TextEditingController(text: _mainAmountCtrl.text);
+    _mainAmountCtrl.addListener(_onMainAmountCtrlChanged);
     // Only expense/income are ever meaningful here — anything else (or
     // nothing) falls back to the screen's own default.
     final initial = widget.initialType;
@@ -305,6 +312,9 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     for (final leg in _hybridLegs) {
       leg.dispose();
     }
+    _mainAmountCtrl.removeListener(_onMainAmountCtrlChanged);
+    _systemAmountTextCtrl.dispose();
+    _systemAmountFocusNode.dispose();
     _mainAmountCtrl.dispose();
     _changeAmountCtrl.dispose();
     _foreignAmountCtrl.dispose();
@@ -484,12 +494,30 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   // ── Keypad ────────────────────────────────────────────────────────────────
 
+  void _onMainAmountCtrlChanged() {
+    if (_systemAmountTextCtrl.text != _activeAmountCtrl.text) {
+      _systemAmountTextCtrl.text = _activeAmountCtrl.text;
+    }
+  }
+
+  void _onSystemAmountInput(String val) {
+    setState(() {
+      _activeAmountCtrl.text = val;
+    });
+  }
+
   /// Makes [ctrl] the shared keypad's target and brings the keypad back if
   /// Note/Payee had stolen focus — every amount field's display box calls
   /// this on tap.
   void _activateAmountCtrl(AmountKeypadController ctrl) {
     FocusScope.of(context).unfocus();
-    setState(() => _activeAmountCtrl = ctrl);
+    setState(() {
+      _activeAmountCtrl = ctrl;
+      _systemAmountTextCtrl.text = ctrl.text;
+    });
+    if (KeypadScope.of(context)) {
+      _systemAmountFocusNode.requestFocus();
+    }
   }
 
   void _onKey(String k) => setState(() => _activeAmountCtrl.applyKey(k));
@@ -731,7 +759,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.grid_view_rounded),
-              title: const Text('XPENC icon'),
+              title: const Text('Networth icon'),
               subtitle: const Text('Pick from the app\'s own icon library'),
               onTap: () =>
                   Navigator.of(sheetContext).pop(_CustomIconSource.library),
@@ -2073,6 +2101,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     final theme = Theme.of(context);
     final accountMap = ref.watch(accountMapProvider);
     final categoryMap = ref.watch(categoryMapProvider);
+    final useSystemKeyboard = KeypadScope.of(context);
     // Kept warm from the moment this screen opens, not read for the first
     // time inside `_save`: `envelopeOutflowShortfall` needs a real value
     // already in hand the instant Save is tapped, and a provider nothing
@@ -2120,6 +2149,27 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         actions: _loading
             ? null
             : [
+                IconButton(
+                  icon: Icon(
+                    useSystemKeyboard
+                        ? Icons.dialpad_rounded
+                        : Icons.keyboard_outlined,
+                  ),
+                  tooltip: useSystemKeyboard
+                      ? 'Switch to in-app keypad'
+                      : 'Switch to phone keyboard',
+                  onPressed: () {
+                    final next = !useSystemKeyboard;
+                    ref
+                        .read(appPreferencesRepositoryProvider)
+                        .setBool('use_system_keyboard', next);
+                    if (!next) {
+                      _systemAmountFocusNode.unfocus();
+                    } else {
+                      _systemAmountFocusNode.requestFocus();
+                    }
+                  },
+                ),
                 _customIconAction(theme),
                 _tagsAction(theme),
                 _receiptAction(theme),
@@ -2180,22 +2230,38 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     const SizedBox(height: 24),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: GestureDetector(
-                        onTap: () => _activateAmountCtrl(_mainAmountCtrl),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            key: const Key('amountDisplay'),
-                            txCurrency == null
-                                ? MoneyFormat.symbol(amount)
-                                : MoneyFormat.symbolIn(amount, txCurrency),
-                            style: theme.textTheme.displayMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: colorForTxType(_type),
-                              fontFeatures: kTabularFigures,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          if (useSystemKeyboard)
+                            Opacity(
+                              opacity: 0.0,
+                              child: TextField(
+                                key: const Key('systemAmountInput'),
+                                focusNode: _systemAmountFocusNode,
+                                controller: _systemAmountTextCtrl,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                onChanged: _onSystemAmountInput,
+                              ),
+                            ),
+                          GestureDetector(
+                            onTap: () => _activateAmountCtrl(_mainAmountCtrl),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                key: const Key('amountDisplay'),
+                                txCurrency == null
+                                    ? MoneyFormat.symbol(amount)
+                                    : MoneyFormat.symbolIn(amount, txCurrency),
+                                style: theme.textTheme.displayMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: colorForTxType(_type),
+                                  fontFeatures: kTabularFigures,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                     _selectedTagsChips(),
@@ -2214,7 +2280,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                         ),
                       ),
                     ),
-                    if (!_textFieldFocused)
+                    if (!useSystemKeyboard && !_textFieldFocused)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
                         child: AmountKeypadGrid(

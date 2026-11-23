@@ -47,7 +47,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
           title: 'Allow in system settings',
           body:
               'Android won\'t ask again for ${p.title.toLowerCase()}. '
-              'Open XPENC\'s settings page to allow it there.',
+              'Open Networth\'s settings page to allow it there.',
         );
         if (go) await AppPermissions.openSettings(p);
       }
@@ -56,7 +56,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
         title: 'Turn off in system settings',
         body:
             'Android only lets you remove a permission from system '
-            'settings. Turning one off there restarts XPENC — your data '
+            'settings. Turning one off there restarts Networth — your data '
             'is not affected.',
       );
       if (go) await AppPermissions.openSettings(p);
@@ -153,7 +153,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
                 const _InfoTile(
                   icon: Icons.wifi_off_rounded,
                   title: 'Internet',
-                  subtitle: 'XPENC cannot connect to the internet — your '
+                  subtitle: 'Networth cannot connect to the internet — your '
                       'data never leaves this device',
                 ),
                 Divider(height: 1, color: cs.outline),
@@ -161,7 +161,7 @@ class _PermissionsSettingsScreenState extends State<PermissionsSettingsScreen> {
                   icon: Icons.sms_outlined,
                   title: 'SMS',
                   subtitle: 'Bank messages come in only when you share one '
-                      'to XPENC',
+                      'to Networth',
                 ),
                 Divider(height: 1, color: cs.outline),
                 const _InfoTile(

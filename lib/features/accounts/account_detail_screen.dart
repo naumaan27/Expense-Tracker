@@ -388,7 +388,7 @@ class _HeaderCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'XPENC shows ${_fmt(shown)}${_entersAsOwed ? ' owed' : ''}. '
+                  'Networth shows ${_fmt(shown)}${_entersAsOwed ? ' owed' : ''}. '
                   'Enter what ${_entersAsOwed ? 'you really owe' : 'you really have'} '
                   'and the difference is recorded as a Correction.',
                 ),
@@ -440,7 +440,7 @@ class _HeaderCard extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   'Corrections are never counted as income or spending, but '
-                  'they lower your XPENC Score\'s Tracking habit — logging as '
+                  'they lower your Networth Score\'s Tracking habit — logging as '
                   'you go keeps the balance right on its own.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,

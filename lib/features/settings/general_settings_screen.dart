@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/app_preferences.dart';
 import '../../data/providers.dart';
 import 'more_screen_layout_sheet.dart';
 import 'settings_common.dart';
@@ -23,6 +24,8 @@ class GeneralSettingsScreen extends ConsumerWidget {
     final showSymbol = ref.watch(showCurrencySymbolProvider);
     final moreScreenViewMode = ref.watch(moreScreenViewModeProvider);
     final showCalendarDayTotals = ref.watch(showCalendarDayTotalsProvider);
+    final useSystemKeyboard =
+        ref.watch(useSystemKeyboardProvider).valueOrNull ?? true;
 
     return Scaffold(
       appBar: AppBar(title: const Text('General')),
@@ -75,6 +78,24 @@ class GeneralSettingsScreen extends ConsumerWidget {
                   value: showSymbol,
                   onChanged: (v) =>
                       ref.read(dbProvider).setShowCurrencySymbol(v),
+                ),
+                Divider(height: 1, indent: 60, color: cs.outline),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  secondary: const Icon(Icons.keyboard_outlined),
+                  title: const Text('Use phone keyboard for amounts'),
+                  subtitle: Text(
+                    useSystemKeyboard
+                        ? 'Uses your Android device keyboard to type amounts'
+                        : 'Uses the built-in on-screen number pad',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  value: useSystemKeyboard,
+                  onChanged: (v) => ref
+                      .read(appPreferencesRepositoryProvider)
+                      .setBool('use_system_keyboard', v),
                 ),
                 Divider(height: 1, indent: 60, color: cs.outline),
                 ListTile(

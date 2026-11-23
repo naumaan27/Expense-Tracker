@@ -11,7 +11,9 @@ import 'core/security/screen_security.dart';
 import 'core/security/unlock_method.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/error_view.dart';
+import 'core/widgets/keypad_scope.dart';
 import 'core/widgets/money_text.dart';
+import 'data/app_preferences.dart';
 import 'data/providers.dart';
 import 'features/message_capture/parser/bank_message.dart';
 import 'features/message_capture/share_intake.dart';
@@ -304,6 +306,8 @@ class _XpencAppState extends ConsumerState<XpencApp>
     MoneyFormat.configure(currency: currency, showSymbol: showSymbol);
     final hideAmounts = ref.watch(hideAmountsProvider);
     final extraBottomInset = ref.watch(extraBottomInsetProvider);
+    final useSystemKeyboard =
+        ref.watch(useSystemKeyboardProvider).valueOrNull ?? true;
 
     // Fire-and-forget: a platform-channel call, not something the frame
     // waits on. ScreenSecurity itself no-ops if nothing actually changed.
@@ -349,10 +353,12 @@ class _XpencAppState extends ConsumerState<XpencApp>
               bottom: mq.viewPadding.bottom + extraBottomInset,
             ),
           ),
-          child: CurrencyScope(
-            currency: currency,
-            showSymbol: showSymbol,
-            child: AmountVisibilityScope(
+          child: KeypadScope(
+            useSystemKeyboard: useSystemKeyboard,
+            child: CurrencyScope(
+              currency: currency,
+              showSymbol: showSymbol,
+              child: AmountVisibilityScope(
               hidden: hideAmounts,
               child: switch (ready) {
                 AsyncError(:final error) => _FatalError(
@@ -365,64 +371,62 @@ class _XpencAppState extends ConsumerState<XpencApp>
                 // would silently drop whatever the user was in the middle of
                 // doing: a half-typed transaction, a scroll position,
                 // anything not yet saved.
-                AsyncData() =>
-                  !_passcodeKnown
-                      ? const _LaunchSplash()
-                      : Stack(
-                          children: [
-                            ?child,
-                            // Opt-in (GitHub #90) — someone who deliberately
-                            // leaves screenshot-blocking off made that choice
-                            // on purpose and shouldn't be nagged about it
-                            // unless they ask to be. Never over the lock
-                            // screen either: nothing sensitive is on it.
-                            if (!_locked &&
-                                !ref.watch(preventScreenshotsProvider) &&
-                                ref.watch(screenshotReminderEnabledProvider))
-                              const Positioned(
-                                right: 12,
-                                bottom: 84,
-                                child: _ScreenshotAllowedTag(),
+                AsyncData() => Stack(
+                  children: [
+                    ?child,
+                    // Opt-in (GitHub #90) — someone who deliberately
+                    // leaves screenshot-blocking off made that choice
+                    // on purpose and shouldn't be nagged about it
+                    // unless they ask to be. Never over the lock
+                    // screen either: nothing sensitive is on it.
+                    if (!_locked &&
+                        !ref.watch(preventScreenshotsProvider) &&
+                        ref.watch(screenshotReminderEnabledProvider))
+                      const Positioned(
+                        right: 12,
+                        bottom: 84,
+                        child: _ScreenshotAllowedTag(),
+                      ),
+                    if (_locked)
+                      Positioned.fill(
+                        // `LockScreen` sits here as a sibling of the
+                        // routed `child` above, not a descendant of
+                        // it — the app's real `Navigator` lives
+                        // inside `child`, built by go_router, so
+                        // `LockScreen`'s own context would otherwise
+                        // have no `Navigator` ancestor at all. That
+                        // silently broke "Try another method"'s
+                        // `showModalBottomSheet` (GitHub #127): it
+                        // threw on tap with no visible feedback,
+                        // since only 2+ ready unlock methods ever
+                        // show that button in the first place. A
+                        // small nested `Navigator` — never touched by
+                        // the app's own routing — gives it one.
+                        // `HeroControllerScope.none`: a bare
+                        // `Navigator` otherwise inherits the
+                        // ambient `HeroController` `MaterialApp
+                        // .router` provides, which throws once two
+                        // Navigators (this one and go_router's,
+                        // inside `child`) end up sharing it.
+                        child: HeroControllerScope.none(
+                          child: Navigator(
+                            onGenerateRoute: (_) => MaterialPageRoute(
+                              builder: (_) => LockScreen(
+                                onUnlocked: () =>
+                                    setState(() => _locked = false),
                               ),
-                            if (_locked)
-                              Positioned.fill(
-                                // `LockScreen` sits here as a sibling of the
-                                // routed `child` above, not a descendant of
-                                // it — the app's real `Navigator` lives
-                                // inside `child`, built by go_router, so
-                                // `LockScreen`'s own context would otherwise
-                                // have no `Navigator` ancestor at all. That
-                                // silently broke "Try another method"'s
-                                // `showModalBottomSheet` (GitHub #127): it
-                                // threw on tap with no visible feedback,
-                                // since only 2+ ready unlock methods ever
-                                // show that button in the first place. A
-                                // small nested `Navigator` — never touched by
-                                // the app's own routing — gives it one.
-                                // `HeroControllerScope.none`: a bare
-                                // `Navigator` otherwise inherits the
-                                // ambient `HeroController` `MaterialApp
-                                // .router` provides, which throws once two
-                                // Navigators (this one and go_router's,
-                                // inside `child`) end up sharing it.
-                                child: HeroControllerScope.none(
-                                  child: Navigator(
-                                    onGenerateRoute: (_) => MaterialPageRoute(
-                                      builder: (_) => LockScreen(
-                                        onUnlocked: () =>
-                                            setState(() => _locked = false),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                            ),
+                          ),
                         ),
-                _ => const _LaunchSplash(),
+                      ),
+                  ],
+                ),
+                _ => const SizedBox.shrink(),
               },
             ),
           ),
-        );
+        ),
+      );
       },
     );
   }
@@ -449,18 +453,6 @@ class _ScreenshotAllowedTag extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// The instant between the database opening and settings' first emission —
-/// too short to be a real loading screen, just long enough that showing real
-/// content here risks a flash of data before a passcode lock can engage.
-class _LaunchSplash extends StatelessWidget {
-  const _LaunchSplash();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: BrandMark(size: 72)));
   }
 }
 

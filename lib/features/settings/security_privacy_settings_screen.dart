@@ -259,7 +259,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     leading: const Icon(Icons.key_outlined),
                     title: const Text('Set up master recovery phrase'),
                     subtitle: Text(
-                      'A 10-word backup that can unlock XPENC if the active '
+                      'A 10-word backup that can unlock Networth if the active '
                       'method is entered wrong too many times',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
@@ -305,7 +305,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     title: const Text('Set up authenticator app'),
                     subtitle: Text(
                       'Use Google Authenticator, Authy or similar to unlock '
-                      'XPENC with a 6-digit code',
+                      'Networth with a 6-digit code',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
@@ -327,7 +327,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                     leading: const Icon(Icons.timer_outlined),
                     title: const Text('Lock after'),
                     subtitle: Text(
-                      'How long XPENC may sit in the background before it '
+                      'How long Networth may sit in the background before it '
                       'locks again',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
@@ -390,7 +390,7 @@ class SecurityPrivacySettingsScreen extends ConsumerWidget {
                   secondary: const Icon(Icons.screenshot_outlined),
                   title: const Text('Block screenshots'),
                   subtitle: Text(
-                    'Hides XPENC from screenshots, screen recording and the '
+                    'Hides Networth from screenshots, screen recording and the '
                     'recent-apps thumbnail',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: cs.onSurfaceVariant,

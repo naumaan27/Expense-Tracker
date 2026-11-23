@@ -17,7 +17,7 @@ class LockScreenStyleSheet extends ConsumerWidget {
 
   static String _description(LockScreenStyle style) => switch (style) {
     LockScreenStyle.classic => 'Plain digits, no button background — '
-        "XPENC's original look.",
+        "Networth's original look.",
     LockScreenStyle.bigNumpad => 'Large filled buttons in the usual '
         '1-9, 0 order — easier to hit and read.',
     LockScreenStyle.scrambled => 'Same big buttons, but the digits land in '

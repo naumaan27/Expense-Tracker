@@ -10,7 +10,7 @@
 class AppInfo {
   const AppInfo._();
 
-  static const name = 'Net Worth';
+  static const name = 'Networth';
   static const tagline = 'Money, tracked honestly.';
 
   /// Shown under the wordmark on the About screen.
@@ -28,7 +28,7 @@ class AppInfo {
   // ── Developer ──────────────────────────────────────────────────────────────
   // >>> EDIT YOUR DETAILS HERE <<<
   static const developer = 'Abdul Wadood Naumaan';
-  static const developerRole = 'Developer & Creator';
+  static const developerRole = 'Developer, Creator & Builder';
 
   static const linkedinHandle = 'abdulnaumaan';
   static const linkedinUrl = 'https://www.linkedin.com/in/abdulnaumaan/';
@@ -68,7 +68,7 @@ class AppInfo {
 
   static const fdroidUrl = 'https://f-droid.org/packages/$packageId/';
 
-  /// What "Share XPENC" sends.
+  /// What "Share Networth" sends.
   static const shareText =
       'I track my money with $name — offline, private, no ads. '
       'Get it on Google Play: $playStoreUrl';
@@ -76,5 +76,5 @@ class AppInfo {
   static const licenseName = 'MIT License';
   static const licenseUrl = '$repoUrl/blob/master/LICENSE';
 
-  static const copyright = '© 2026 Net Worth';
+  static const copyright = '© 2026 Networth';
 }

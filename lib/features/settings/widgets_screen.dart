@@ -100,9 +100,9 @@ class _IntroCard extends StatelessWidget {
                 canPin
                     ? 'Tap "Add to home screen" on any of these, or add '
                           'them the usual way: long-press your home screen '
-                          '→ Widgets → XPENC.'
+                          '→ Widgets → Networth.'
                     : 'Add any of these the usual way: long-press your '
-                          'home screen → Widgets → XPENC — your launcher '
+                          'home screen → Widgets → Networth — your launcher '
                           "doesn't support adding widgets from inside an "
                           'app.',
                 style: theme.textTheme.bodyMedium?.copyWith(

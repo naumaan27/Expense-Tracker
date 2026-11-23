@@ -6,6 +6,7 @@ import '../../core/money.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
 import '../../data/tables.dart' show CategoryKind;
+import '../transactions/transaction_link_picker_sheet.dart';
 import 'project_model.dart';
 import 'projects_repository.dart';
 
@@ -32,6 +33,8 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
   int? _selectedCategoryId;
   DateTime _paymentDate = DateTime.now();
   bool _submitting = false;
+  bool _keepAsStarter = false;
+  int? _linkedTransactionId;
 
   @override
   void initState() {
@@ -66,7 +69,7 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedAccountId == null) {
+    if (_linkedTransactionId == null && !_keepAsStarter && _selectedAccountId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select an account where money was received.')),
       );
@@ -87,21 +90,35 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
       final repo = ref.read(projectsRepositoryProvider);
       final money = Money.fromRupees(parsedAmount);
 
-      await repo.recordPayment(
-        project: widget.project,
-        amount: money,
-        accountId: _selectedAccountId!,
-        categoryId: _selectedCategoryId,
-        date: _paymentDate,
-        note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-      );
+      if (_linkedTransactionId != null) {
+        await repo.recordExistingPayment(
+          project: widget.project,
+          amount: money,
+          transactionId: _linkedTransactionId!,
+          date: _paymentDate,
+          note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+        );
+      } else {
+        await repo.recordPayment(
+          project: widget.project,
+          amount: money,
+          accountId: _keepAsStarter ? null : _selectedAccountId,
+          categoryId: _keepAsStarter ? null : _selectedCategoryId,
+          date: _paymentDate,
+          note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+        );
+      }
 
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Recorded ${MoneyFormat.symbol(money)} received! Added to your account.',
+              _linkedTransactionId != null
+                  ? 'Linked past transaction to project (no duplicate money created)!'
+                  : _keepAsStarter
+                      ? 'Recorded ${MoneyFormat.symbol(money)} as project starter (not added to account).'
+                      : 'Recorded ${MoneyFormat.symbol(money)} received! Added to your account.',
             ),
           ),
         );
@@ -226,49 +243,148 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
                   return null;
                 },
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
 
-              // Account Picker
-              DropdownButtonFormField<int>(
-                initialValue: _selectedAccountId,
-                decoration: const InputDecoration(
-                  labelText: 'Deposit into Account *',
-                  prefixIcon: Icon(Icons.account_balance_rounded),
-                  border: OutlineInputBorder(),
+              // Link past transaction button
+              OutlinedButton.icon(
+                icon: const Icon(Icons.link_rounded, size: 18),
+                label: Text(
+                  _linkedTransactionId != null
+                      ? 'Linked to Transaction #$_linkedTransactionId (Tap to Change)'
+                      : 'Already logged this in Accounts? Link past transaction',
+                  style: const TextStyle(fontSize: 12),
                 ),
-                items: [
-                  for (final a in accounts.where((a) => !a.isArchived))
-                    DropdownMenuItem<int>(
-                      value: a.id,
-                      child: Text(a.name),
-                    ),
-                ],
-                onChanged: (val) => setState(() => _selectedAccountId = val),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                onPressed: () async {
+                  final pickedTxId = await showModalBottomSheet<int>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => const TransactionLinkPickerSheet(excludeIds: {}),
+                  );
+                  if (pickedTxId != null) {
+                    final db = ref.read(dbProvider);
+                    final tx = await db.transactionById(pickedTxId);
+                    if (tx != null) {
+                      setState(() {
+                        _linkedTransactionId = tx.id;
+                        _amountController.text = MoneyFormat.formatWithCommas(
+                          (tx.amount.paise / 100).toStringAsFixed(2),
+                        );
+                        _paymentDate = tx.date;
+                        _selectedAccountId = tx.accountId;
+                        if (tx.note != null && tx.note!.isNotEmpty && _noteController.text.isEmpty) {
+                          _noteController.text = tx.note!;
+                        }
+                      });
+                    }
+                  }
+                },
               ),
-              const SizedBox(height: 14),
-
-              // Category Picker (Optional)
-              DropdownButtonFormField<int?>(
-                initialValue: _selectedCategoryId,
-                decoration: const InputDecoration(
-                  labelText: 'Income Category (Optional)',
-                  prefixIcon: Icon(Icons.category_outlined),
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('None / General Income'),
+              if (_linkedTransactionId != null) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                   ),
-                  for (final c in incomeCategories)
-                    DropdownMenuItem<int?>(
-                      value: c.id,
-                      child: Text(c.name),
-                    ),
-                ],
-                onChanged: (val) => setState(() => _selectedCategoryId = val),
-              ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 16, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Linked to past transaction. No duplicate income will be created.',
+                          style: TextStyle(fontSize: 12, color: Colors.blue),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 14),
+                        onPressed: () => setState(() => _linkedTransactionId = null),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
+
+              if (_linkedTransactionId == null) ...[
+                // Starter Toggle Card
+                Card(
+                  elevation: 0,
+                  color: _keepAsStarter
+                      ? cs.primaryContainer.withValues(alpha: 0.35)
+                      : cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                    secondary: Icon(
+                      _keepAsStarter ? Icons.bookmark_added_outlined : Icons.account_balance_wallet_outlined,
+                      color: _keepAsStarter ? cs.primary : cs.onSurfaceVariant,
+                    ),
+                    title: const Text('Keep as project starter', style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(
+                      _keepAsStarter
+                          ? 'Tracks progress in project only — will not be added to your account ledger yet'
+                          : 'Deposits payment as an income transaction into your account',
+                      style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                    ),
+                    value: _keepAsStarter,
+                    onChanged: (val) => setState(() => _keepAsStarter = val),
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+
+              if (_linkedTransactionId == null && !_keepAsStarter) ...[
+                // Account Picker
+                DropdownButtonFormField<int>(
+                  initialValue: _selectedAccountId,
+                  decoration: const InputDecoration(
+                    labelText: 'Deposit into Account *',
+                    prefixIcon: Icon(Icons.account_balance_rounded),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final a in accounts.where((a) => !a.isArchived))
+                      DropdownMenuItem<int>(
+                        value: a.id,
+                        child: Text(a.name),
+                      ),
+                  ],
+                  onChanged: (val) => setState(() => _selectedAccountId = val),
+                ),
+                const SizedBox(height: 14),
+
+                // Category Picker (Optional)
+                DropdownButtonFormField<int?>(
+                  initialValue: _selectedCategoryId,
+                  decoration: const InputDecoration(
+                    labelText: 'Income Category (Optional)',
+                    prefixIcon: Icon(Icons.category_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('None / General Income'),
+                    ),
+                    for (final c in incomeCategories)
+                      DropdownMenuItem<int?>(
+                        value: c.id,
+                        child: Text(c.name),
+                      ),
+                  ],
+                  onChanged: (val) => setState(() => _selectedCategoryId = val),
+                ),
+                const SizedBox(height: 14),
+              ],
 
               // Date
               OutlinedButton.icon(

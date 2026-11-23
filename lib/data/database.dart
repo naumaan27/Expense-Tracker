@@ -7032,7 +7032,7 @@ class AppDatabase extends _$AppDatabase {
       );
     }
     if (data['accounts'] is! List || data['transactions'] is! List) {
-      throw ArgumentError('This file is not an XPENC backup.');
+      throw ArgumentError('This file is not a Networth backup.');
     }
 
     List<Map<String, Object?>> rows(String key) =>

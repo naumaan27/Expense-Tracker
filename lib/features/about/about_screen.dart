@@ -62,7 +62,7 @@ class AboutScreen extends StatelessWidget {
             ),
           ),
 
-          _sectionLabel(context, 'Developer'),
+          _sectionLabel(context, 'Developer, Creator & Builder'),
           Card(
             child: Column(
               children: [

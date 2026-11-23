@@ -189,13 +189,15 @@ class ProjectsRepository {
   }
 
   /// Records an actual received payment for a project:
-  /// 1. Posts an Income transaction into the selected account (e.g. Bank).
-  /// 2. Records the payment in `project_payments` linked to that transaction.
+  /// 1. If [accountId] is provided, posts an Income transaction into that account.
+  ///    If [accountId] is null, records it as a project starter payment without
+  ///    altering account balances or net worth.
+  /// 2. Records the payment in `project_payments` (linked to that transaction if created).
   /// 3. If total payments meet or exceed the quote, optionally marks project completed.
   Future<void> recordPayment({
     required Project project,
     required Money amount,
-    required int accountId,
+    int? accountId,
     int? categoryId,
     required DateTime date,
     String? note,
@@ -206,16 +208,19 @@ class ProjectsRepository {
         ? 'Project: ${project.title} (${note.trim()})'
         : 'Project: ${project.title}';
 
-    // 1. Post real income transaction
-    final txId = await _db.addTransaction(
-      type: TxType.income,
-      amount: amount,
-      accountId: accountId,
-      categoryId: categoryId,
-      date: date,
-      payee: project.clientName,
-      note: txNote,
-    );
+    // 1. Post real income transaction if an account was selected
+    int? txId;
+    if (accountId != null) {
+      txId = await _db.addTransaction(
+        type: TxType.income,
+        amount: amount,
+        accountId: accountId,
+        categoryId: categoryId,
+        date: date,
+        payee: project.clientName,
+        note: txNote,
+      );
+    }
 
     // 2. Link payment
     final now = DateTime.now();
@@ -226,7 +231,7 @@ class ProjectsRepository {
       ''',
       variables: [
         Variable.withInt(project.id),
-        Variable.withInt(txId),
+        txId != null ? Variable.withInt(txId) : const Variable<int>(null),
         Variable.withInt(amount.paise),
         Variable.withString(date.toIso8601String()),
         Variable.withString(note?.trim() ?? ''),
@@ -242,6 +247,84 @@ class ProjectsRepository {
     } else {
       _notify();
     }
+  }
+
+  /// Links an existing starter payment (which has transaction_id == null)
+  /// to a real ledger Account by posting an Income transaction.
+  Future<void> addPaymentToAccount({
+    required Project project,
+    required ProjectPayment payment,
+    required int accountId,
+    int? categoryId,
+  }) async {
+    await _ensureTables();
+    final txNote = payment.note != null && payment.note!.trim().isNotEmpty
+        ? 'Project: ${project.title} (${payment.note!.trim()})'
+        : 'Project: ${project.title} (Starter Payment)';
+    final txId = await _db.addTransaction(
+      type: TxType.income,
+      amount: payment.amount,
+      accountId: accountId,
+      categoryId: categoryId,
+      date: payment.date,
+      payee: project.clientName,
+      note: txNote,
+    );
+    await _db.customUpdate(
+      'UPDATE project_payments SET transaction_id = ? WHERE id = ?',
+      variables: [Variable.withInt(txId), Variable.withInt(payment.id)],
+    );
+    _notify();
+  }
+
+  /// Records a project payment linked to an existing past transaction.
+  /// Does NOT create any new transaction in the ledger.
+  Future<void> recordExistingPayment({
+    required Project project,
+    required Money amount,
+    required int transactionId,
+    required DateTime date,
+    String? note,
+  }) async {
+    await _ensureTables();
+    final now = DateTime.now();
+    await _db.customInsert(
+      '''
+      INSERT INTO project_payments (project_id, transaction_id, amount, date, note, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ''',
+      variables: [
+        Variable.withInt(project.id),
+        Variable.withInt(transactionId),
+        Variable.withInt(amount.paise),
+        Variable.withString(date.toIso8601String()),
+        Variable.withString(note?.trim() ?? ''),
+        Variable.withString(now.toIso8601String()),
+      ],
+    );
+
+    final existing = await getPaymentsForProject(project.id);
+    final totalReceived = existing.fold<int>(0, (sum, p) => sum + p.amount.paise);
+    if (totalReceived >= project.quoteAmount.paise && project.status == ProjectStatus.active) {
+      await updateProjectStatus(project.id, ProjectStatus.completed);
+    } else {
+      _notify();
+    }
+  }
+
+  /// Links an existing transaction from the ledger to a project payment.
+  /// Used when the payment was already recorded in accounts previously
+  /// so it gets associated with the project without double-counting.
+  Future<void> linkExistingTransactionToPayment({
+    required int paymentId,
+    required int transactionId,
+  }) async {
+    await _ensureTables();
+    await _db.customUpdate(
+      'UPDATE project_payments SET transaction_id = ? WHERE id = ?',
+      variables: [Variable.withInt(transactionId), Variable.withInt(paymentId)],
+    );
+    _notify();
   }
 }
 

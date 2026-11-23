@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../currency.dart';
 import '../money.dart';
 import '../../features/add_transaction/amount_buffer.dart';
+import 'keypad_scope.dart';
 
 /// A [ChangeNotifier]-based, `TextEditingController`-shaped holder for an
 /// [AmountKeypadField]'s buffer text — a near drop-in replacement at call
@@ -165,6 +166,9 @@ class AmountKeypadField extends StatefulWidget {
 }
 
 class _AmountKeypadFieldState extends State<AmountKeypadField> {
+  late final TextEditingController _sysTextController;
+  late final FocusNode _sysFocusNode;
+
   /// Only meaningful when [AmountKeypadField.group] is null — with a group,
   /// visibility is derived from `group.active` instead (see [_active]).
   bool _standaloneActive = false;
@@ -176,6 +180,8 @@ class _AmountKeypadFieldState extends State<AmountKeypadField> {
   @override
   void initState() {
     super.initState();
+    _sysTextController = TextEditingController(text: widget.controller.text);
+    _sysFocusNode = FocusNode();
     _standaloneActive = widget.autofocus;
     if (widget.autofocus) widget.group?.activate(widget.controller);
     widget.controller.addListener(_onControllerChanged);
@@ -208,6 +214,8 @@ class _AmountKeypadFieldState extends State<AmountKeypadField> {
 
   @override
   void dispose() {
+    _sysTextController.dispose();
+    _sysFocusNode.dispose();
     widget.controller.removeListener(_onControllerChanged);
     widget.group?.removeListener(_onControllerChanged);
     for (final node in widget.yieldTo) {
@@ -216,7 +224,12 @@ class _AmountKeypadFieldState extends State<AmountKeypadField> {
     super.dispose();
   }
 
-  void _onControllerChanged() => setState(() {});
+  void _onControllerChanged() {
+    if (_sysTextController.text != widget.controller.text) {
+      _sysTextController.text = widget.controller.text;
+    }
+    setState(() {});
+  }
 
   void _onYieldFocusChanged() {
     if (!widget.yieldTo.any((n) => n.hasFocus) || !_active) return;
@@ -248,6 +261,37 @@ class _AmountKeypadFieldState extends State<AmountKeypadField> {
 
   @override
   Widget build(BuildContext context) {
+    final useSystem = KeypadScope.of(context);
+    if (useSystem) {
+      final prefix = !widget.showPrefix
+          ? ''
+          : widget.currency != null
+              ? (MoneyFormat.showSymbol ? '${widget.currency!.symbol} ' : '')
+              : MoneyFormat.inputPrefix;
+      return TextField(
+        key: widget.displayKey,
+        controller: _sysTextController,
+        focusNode: _sysFocusNode,
+        autofocus: widget.autofocus,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        style: widget.style ??
+            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: kTabularFigures,
+                ),
+        decoration: InputDecoration(
+          isDense: widget.isDense,
+          labelText: widget.label,
+          hintText: widget.hintText,
+          prefixText: prefix,
+        ),
+        onChanged: (val) {
+          widget.controller.text = val;
+          widget.onChanged?.call(val);
+        },
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,

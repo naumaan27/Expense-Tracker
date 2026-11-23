@@ -105,7 +105,7 @@ class _MasterPhraseSetupScreenState
       children: [
         Text(
           'Write these ${_words.length} words down, in order, and keep them '
-          'somewhere safe. If XPENC ever locks you out after too many wrong '
+          'somewhere safe. If Networth ever locks you out after too many wrong '
           'PIN attempts, this phrase is the only way back in.',
           style: theme.textTheme.bodyMedium,
         ),
@@ -124,7 +124,7 @@ class _MasterPhraseSetupScreenState
               Expanded(
                 child: Text(
                   "It can't be changed and it isn't stored anywhere "
-                  'recoverable — not in a backup, not by XPENC. Lose it '
+                  'recoverable — not in a backup, not by Networth. Lose it '
                   "along with your PIN and there's no way back into your "
                   'data on this device.',
                   style: theme.textTheme.bodySmall?.copyWith(

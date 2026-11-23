@@ -330,7 +330,7 @@ class PersonsSettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'XPENC can\'t read or answer the *99# menu for you — that '
+                'Networth can\'t read or answer the *99# menu for you — that '
                 'screen belongs to your phone\'s own dialer, not any app. '
                 'What this does instead:',
                 style: theme.textTheme.bodyMedium,
@@ -338,11 +338,11 @@ class PersonsSettingsScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 '1. You enter who you\'re paying (UPI ID or phone number).\n'
-                '2. Tap Dial *99# — XPENC copies it and opens your dialer, '
+                '2. Tap Dial *99# — Networth copies it and opens your dialer, '
                 'ready to call.\n'
                 '3. You go through the menu yourself: Send Money → paste → '
                 'amount → UPI PIN.\n'
-                '4. Back in XPENC, log it as a normal transaction.',
+                '4. Back in Networth, log it as a normal transaction.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

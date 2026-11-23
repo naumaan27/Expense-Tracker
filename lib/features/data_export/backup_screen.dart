@@ -328,7 +328,7 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
                   const SizedBox(height: 12),
                   Text(
                     'Backups live in Download/$backupAppFolder on this phone — '
-                    'visible in any file manager, and kept even if XPENC itself '
+                    'visible in any file manager, and kept even if Networth itself '
                     'is uninstalled. Moving to a new phone? Send that folder '
                     'across, or export a file here and use Import on the new '
                     'phone.',
