@@ -71,6 +71,7 @@ class ProjectPayment {
     required this.amount,
     required this.date,
     this.note,
+    this.isAdditionalWork = false,
     required this.createdAt,
   });
 
@@ -80,6 +81,7 @@ class ProjectPayment {
   final Money amount;
   final DateTime date;
   final String? note;
+  final bool isAdditionalWork;
   final DateTime createdAt;
 
   factory ProjectPayment.fromMap(Map<String, Object?> map) {
@@ -90,6 +92,8 @@ class ProjectPayment {
       amount: Money(map['amount'] as int),
       date: DateTime.parse(map['date'] as String),
       note: map['note'] as String?,
+      isAdditionalWork: (map['is_additional_work'] as int? ?? 0) == 1 ||
+          (map['note'] as String? ?? '').startsWith('[Additional Work]'),
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
@@ -100,6 +104,7 @@ class ProjectPayment {
         'amount': amount.paise,
         'date': date.toIso8601String(),
         'note': note,
+        'is_additional_work': isAdditionalWork ? 1 : 0,
         'created_at': createdAt.toIso8601String(),
       };
 }

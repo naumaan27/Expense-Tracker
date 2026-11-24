@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/money.dart';
+import '../persons/contact_import.dart';
 import 'project_model.dart';
 import 'projects_repository.dart';
 
@@ -110,6 +111,28 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
         }
         _selectedStream = result;
       });
+    }
+  }
+
+  Future<void> _pickClientFromContacts() async {
+    try {
+      final contact = await pickContact();
+      if (contact == null || !mounted) return;
+      if (contact.name != null && contact.name!.trim().isNotEmpty) {
+        setState(() {
+          _clientController.text = contact.name!.trim();
+        });
+      } else if (!contact.detailsAllowed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contacts permission was denied.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Couldn't open contacts: $e")),
+        );
+      }
     }
   }
 
@@ -274,11 +297,16 @@ class _AddProjectSheetState extends ConsumerState<AddProjectSheet> {
               // Client Name
               TextFormField(
                 controller: _clientController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Client / Student Name *',
                   hintText: 'e.g. Acme Corp, Rahul Sharma',
-                  prefixIcon: Icon(Icons.person_outline_rounded),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.person_outline_rounded),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.contacts_outlined),
+                    tooltip: 'Select from Phone Book',
+                    onPressed: _pickClientFromContacts,
+                  ),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (val) =>
                     (val == null || val.trim().isEmpty) ? 'Please enter a client name' : null,

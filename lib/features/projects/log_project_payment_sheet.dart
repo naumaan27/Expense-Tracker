@@ -34,7 +34,13 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
   DateTime _paymentDate = DateTime.now();
   bool _submitting = false;
   bool _keepAsStarter = false;
+  bool _isAdditionalWork = false;
   int? _linkedTransactionId;
+
+  double get _parsedEnteredAmount {
+    final clean = _amountController.text.replaceAll(',', '').trim();
+    return double.tryParse(clean) ?? 0.0;
+  }
 
   @override
   void initState() {
@@ -97,6 +103,7 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
           transactionId: _linkedTransactionId!,
           date: _paymentDate,
           note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+          isAdditionalWork: _isAdditionalWork,
         );
       } else {
         await repo.recordPayment(
@@ -106,6 +113,7 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
           categoryId: _keepAsStarter ? null : _selectedCategoryId,
           date: _paymentDate,
           note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+          isAdditionalWork: _isAdditionalWork,
         );
       }
 
@@ -114,11 +122,13 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _linkedTransactionId != null
-                  ? 'Linked past transaction to project (no duplicate money created)!'
-                  : _keepAsStarter
-                      ? 'Recorded ${MoneyFormat.symbol(money)} as project starter (not added to account).'
-                      : 'Recorded ${MoneyFormat.symbol(money)} received! Added to your account.',
+              _isAdditionalWork
+                  ? 'Recorded ${MoneyFormat.symbol(money)} for additional work! Project quote expanded to ${MoneyFormat.symbol(Money(widget.project.quoteAmount.paise + money.paise))}.'
+                  : _linkedTransactionId != null
+                      ? 'Linked past transaction to project (no duplicate money created)!'
+                      : _keepAsStarter
+                          ? 'Recorded ${MoneyFormat.symbol(money)} as project starter (not added to account).'
+                          : 'Recorded ${MoneyFormat.symbol(money)} received! Added to your account.',
             ),
           ),
         );
@@ -243,7 +253,70 @@ class _LogProjectPaymentSheetState extends ConsumerState<LogProjectPaymentSheet>
                   return null;
                 },
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+
+              // Additional Work / Scope Expansion Toggle
+              Card(
+                elevation: 0,
+                color: _isAdditionalWork
+                    ? cs.tertiaryContainer.withValues(alpha: 0.35)
+                    : cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                        secondary: Icon(
+                          Icons.add_task_rounded,
+                          color: _isAdditionalWork ? cs.tertiary : cs.onSurfaceVariant,
+                        ),
+                        title: const Text(
+                          'Payment for Additional Work',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          _isAdditionalWork
+                              ? 'Increases total project quote by this amount'
+                              : 'Does this payment cover extra scope / add-on work?',
+                          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                        ),
+                        value: _isAdditionalWork,
+                        onChanged: (val) => setState(() => _isAdditionalWork = val),
+                      ),
+                      if (_isAdditionalWork && _parsedEnteredAmount > 0)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: cs.tertiaryContainer.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.arrow_upward_rounded, size: 16, color: cs.onTertiaryContainer),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Total quote expands: ${MoneyFormat.symbol(widget.project.quoteAmount)} → ${MoneyFormat.symbol(Money(widget.project.quoteAmount.paise + (_parsedEnteredAmount * 100).toInt()))}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: cs.onTertiaryContainer,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
 
               // Link past transaction button
               OutlinedButton.icon(

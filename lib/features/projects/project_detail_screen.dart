@@ -287,19 +287,42 @@ class ProjectDetailScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            builder: (_) => AddProjectSheet(existingProject: project),
-                          );
-                        },
-                        icon: const Icon(Icons.edit_note_rounded, size: 18),
-                        label: const Text('Revise Quote / Scope'),
-                        style: OutlinedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  builder: (_) => AddProjectSheet(existingProject: project),
+                                );
+                              },
+                              icon: const Icon(Icons.edit_note_rounded, size: 18),
+                              label: const Text('Revise Quote'),
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  builder: (_) => _AddExtraScopeSheet(project: project),
+                                );
+                              },
+                              icon: const Icon(Icons.add_task_rounded, size: 18),
+                              label: const Text('+ Extra Scope'),
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
 
                       if (project.dueDate != null) ...[
@@ -434,9 +457,35 @@ class ProjectDetailScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                if (p.transactionId == null) ...[
-                                  Row(
-                                    children: [
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    if (p.isAdditionalWork)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: cs.tertiaryContainer,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.add_task_rounded, size: 12, color: cs.onTertiaryContainer),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Additional Work (+Quote)',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: cs.onTertiaryContainer,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    if (p.transactionId == null)
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
@@ -459,41 +508,54 @@ class ProjectDetailScreen extends ConsumerWidget {
                                             ),
                                           ],
                                         ),
-                                      ),
-                                      const Spacer(),
-                                      OutlinedButton.icon(
-                                        icon: const Icon(Icons.add_to_photos_outlined, size: 15),
-                                        label: const Text('Add to Account', style: TextStyle(fontSize: 12)),
-                                        style: OutlinedButton.styleFrom(
-                                          visualDensity: VisualDensity.compact,
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                      )
+                                    else
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
                                         ),
-                                        onPressed: () {
-                                          showModalBottomSheet(
-                                            context: context,
-                                            isScrollControlled: true,
-                                            builder: (_) => _AddToAccountSheet(
-                                              project: project,
-                                              payment: p,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.check_circle_outline_rounded, size: 12, color: Colors.green[800]),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'In Account Ledger',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.green[800],
+                                              ),
                                             ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ] else ...[
-                                  Row(
-                                    children: [
-                                      Icon(Icons.check_circle_outline_rounded, size: 13, color: cs.primary),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'In Account Ledger',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: cs.onSurfaceVariant,
+                                          ],
                                         ),
                                       ),
-                                    ],
+                                  ],
+                                ),
+                                if (p.transactionId == null) ...[
+                                  const SizedBox(height: 6),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: OutlinedButton.icon(
+                                      icon: const Icon(Icons.add_to_photos_outlined, size: 15),
+                                      label: const Text('Add to Account', style: TextStyle(fontSize: 12)),
+                                      style: OutlinedButton.styleFrom(
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                      ),
+                                      onPressed: () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          builder: (_) => _AddToAccountSheet(
+                                            project: project,
+                                            payment: p,
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ],
                               ],
@@ -743,6 +805,391 @@ class _AddToAccountSheetState extends ConsumerState<_AddToAccountSheet> {
                   },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AddExtraScopeSheet extends ConsumerStatefulWidget {
+  const _AddExtraScopeSheet({required this.project});
+
+  final Project project;
+
+  @override
+  ConsumerState<_AddExtraScopeSheet> createState() => _AddExtraScopeSheetState();
+}
+
+class _AddExtraScopeSheetState extends ConsumerState<_AddExtraScopeSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _scopeController = TextEditingController();
+
+  bool _paymentReceived = false;
+  bool _keepAsStarter = false;
+  int? _selectedAccountId;
+  int? _selectedCategoryId;
+  int? _linkedTransactionId;
+  DateTime _date = DateTime.now();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _scopeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final cleanText = _amountController.text.replaceAll(',', '').trim();
+    final parsedAmount = double.tryParse(cleanText);
+    if (parsedAmount == null || parsedAmount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid amount.')),
+      );
+      return;
+    }
+
+    if (_paymentReceived &&
+        _linkedTransactionId == null &&
+        !_keepAsStarter &&
+        _selectedAccountId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an account where money was received.')),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      final repo = ref.read(projectsRepositoryProvider);
+      final money = Money.fromRupees(parsedAmount);
+      final scopeTitle = _scopeController.text.trim();
+      final fullNote = scopeTitle.isNotEmpty
+          ? 'Additional Work: $scopeTitle'
+          : 'Additional Work / Scope Expansion';
+
+      if (!_paymentReceived) {
+        // Expand project quote only
+        await repo.increaseProjectQuote(
+          projectId: widget.project.id,
+          additionalAmount: money,
+        );
+      } else {
+        // Payment received for this extra work
+        if (_linkedTransactionId != null) {
+          await repo.recordExistingPayment(
+            project: widget.project,
+            amount: money,
+            transactionId: _linkedTransactionId!,
+            date: _date,
+            note: fullNote,
+            isAdditionalWork: true,
+          );
+        } else {
+          await repo.recordPayment(
+            project: widget.project,
+            amount: money,
+            accountId: _keepAsStarter ? null : _selectedAccountId,
+            categoryId: _keepAsStarter ? null : _selectedCategoryId,
+            date: _date,
+            note: fullNote,
+            isAdditionalWork: true,
+          );
+        }
+      }
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _paymentReceived
+                  ? 'Added extra scope and recorded ${MoneyFormat.symbol(money)}! Total quote increased.'
+                  : 'Expanded project quote by ${MoneyFormat.symbol(money)} for new scope.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add scope: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final accounts = ref.watch(accountsProvider).valueOrNull ?? const <AccountRow>[];
+    final incomeCategories =
+        ref.watch(categoriesProvider(CategoryKind.income)).valueOrNull ??
+            const <CategoryRow>[];
+
+    final activeAccounts = accounts.where((a) => !a.isArchived).toList();
+    if (_selectedAccountId == null && activeAccounts.isNotEmpty) {
+      _selectedAccountId = activeAccounts.first.id;
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Add Extra Scope / Work',
+                    style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Increases the total project quotation for new deliverables.',
+                style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 18),
+
+              // Scope description
+              TextFormField(
+                controller: _scopeController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Scope / Work Description',
+                  hintText: 'e.g. Payment gateway integration, 2 extra pages',
+                  prefixIcon: Icon(Icons.task_alt_rounded),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Additional Amount
+              TextFormField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: const [ThousandsSeparatorInputFormatter()],
+                onChanged: (val) {
+                  final formatted = MoneyFormat.formatWithCommas(val);
+                  if (formatted != val) {
+                    _amountController.value = TextEditingValue(
+                      text: formatted,
+                      selection: TextSelection.collapsed(offset: formatted.length),
+                      composing: TextRange.empty,
+                    );
+                  }
+                },
+                decoration: const InputDecoration(
+                  labelText: 'Additional Cost / Quote *',
+                  hintText: '0.00',
+                  prefixIcon: Icon(Icons.add_circle_outline_rounded, color: Colors.green),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) return 'Enter the additional amount';
+                  final num = double.tryParse(val.replaceAll(',', '').trim());
+                  if (num == null || num <= 0) return 'Enter a positive amount';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+
+              // Payment received toggle
+              Card(
+                elevation: 0,
+                color: _paymentReceived
+                    ? cs.primaryContainer.withValues(alpha: 0.35)
+                    : cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                  secondary: Icon(
+                    _paymentReceived ? Icons.payments_rounded : Icons.pending_actions_rounded,
+                    color: _paymentReceived ? cs.primary : cs.onSurfaceVariant,
+                  ),
+                  title: const Text(
+                    'Payment already received for this?',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    _paymentReceived
+                        ? 'Will record this payment now and update the project quote'
+                        : 'Will only increase the project quote. You can collect payment later.',
+                    style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                  ),
+                  value: _paymentReceived,
+                  onChanged: (val) => setState(() => _paymentReceived = val),
+                ),
+              ),
+
+              if (_paymentReceived) ...[
+                const SizedBox(height: 12),
+
+                // Link past transaction button
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.link_rounded, size: 18),
+                  label: Text(
+                    _linkedTransactionId != null
+                        ? 'Linked to Transaction #$_linkedTransactionId (Tap to Change)'
+                        : 'Already in Accounts? Link past transaction',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  onPressed: () async {
+                    final pickedTxId = await showModalBottomSheet<int>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => const TransactionLinkPickerSheet(excludeIds: {}),
+                    );
+                    if (pickedTxId != null) {
+                      final db = ref.read(dbProvider);
+                      final tx = await db.transactionById(pickedTxId);
+                      if (tx != null) {
+                        setState(() {
+                          _linkedTransactionId = tx.id;
+                          _amountController.text = MoneyFormat.formatWithCommas(
+                            (tx.amount.paise / 100).toStringAsFixed(2),
+                          );
+                          _date = tx.date;
+                          _selectedAccountId = tx.accountId;
+                          if (tx.note != null &&
+                              tx.note!.isNotEmpty &&
+                              _scopeController.text.isEmpty) {
+                            _scopeController.text = tx.note!;
+                          }
+                        });
+                      }
+                    }
+                  },
+                ),
+
+                if (_linkedTransactionId == null) ...[
+                  const SizedBox(height: 10),
+                  // Starter switch
+                  Card(
+                    elevation: 0,
+                    color: _keepAsStarter
+                        ? cs.primaryContainer.withValues(alpha: 0.35)
+                        : cs.surfaceContainerHighest.withValues(alpha: 0.35),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                      secondary: Icon(
+                        _keepAsStarter ? Icons.bookmark_added_outlined : Icons.account_balance_wallet_outlined,
+                        color: _keepAsStarter ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                      title: const Text('Keep as project starter / unlinked', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        _keepAsStarter
+                            ? 'Records on project without affecting ledger accounts yet'
+                            : 'Deposits payment as an income transaction into your account',
+                        style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                      ),
+                      value: _keepAsStarter,
+                      onChanged: (val) => setState(() => _keepAsStarter = val),
+                    ),
+                  ),
+                ],
+
+                if (_linkedTransactionId == null && !_keepAsStarter) ...[
+                  const SizedBox(height: 12),
+                  // Account picker
+                  DropdownButtonFormField<int>(
+                    initialValue: _selectedAccountId,
+                    decoration: const InputDecoration(
+                      labelText: 'Deposit into Account *',
+                      prefixIcon: Icon(Icons.account_balance_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: activeAccounts.map((a) {
+                      return DropdownMenuItem<int>(
+                        value: a.id,
+                        child: Text('${a.name} (${MoneyFormat.compact(a.currentBalance)})'),
+                      );
+                    }).toList(),
+                    onChanged: (val) => setState(() => _selectedAccountId = val),
+                    validator: (val) {
+                      if (!_keepAsStarter && _linkedTransactionId == null && val == null) {
+                        return 'Select an account';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Category picker
+                  DropdownButtonFormField<int>(
+                    initialValue: _selectedCategoryId,
+                    decoration: const InputDecoration(
+                      labelText: 'Category (Optional)',
+                      prefixIcon: Icon(Icons.category_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem<int>(
+                        value: null,
+                        child: Text('None (General Income)'),
+                      ),
+                      ...incomeCategories.map((c) {
+                        return DropdownMenuItem<int>(
+                          value: c.id,
+                          child: Text(c.name),
+                        );
+                      }),
+                    ],
+                    onChanged: (val) => setState(() => _selectedCategoryId = val),
+                  ),
+                ],
+              ],
+
+              const SizedBox(height: 20),
+
+              FilledButton.icon(
+                onPressed: _submitting ? null : _submit,
+                icon: _submitting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.check_rounded),
+                label: Text(
+                  _submitting
+                      ? 'Saving...'
+                      : _paymentReceived
+                          ? 'Add Scope & Record Payment'
+                          : 'Expand Project Quote',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

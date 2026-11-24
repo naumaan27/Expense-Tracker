@@ -41,9 +41,15 @@ class ProjectsRepository {
         amount INTEGER NOT NULL,
         date TEXT NOT NULL,
         note TEXT,
+        is_additional_work INTEGER DEFAULT 0,
         created_at TEXT NOT NULL
       );
     ''');
+    try {
+      await _db.customStatement(
+        'ALTER TABLE project_payments ADD COLUMN is_additional_work INTEGER DEFAULT 0;',
+      );
+    } catch (_) {}
     _initialized = true;
   }
 
@@ -179,6 +185,21 @@ class ProjectsRepository {
     _notify();
   }
 
+  Future<void> increaseProjectQuote({
+    required int projectId,
+    required Money additionalAmount,
+  }) async {
+    await _ensureTables();
+    await _db.customUpdate(
+      'UPDATE projects SET quote_amount = quote_amount + ? WHERE id = ?',
+      variables: [
+        Variable.withInt(additionalAmount.paise),
+        Variable.withInt(projectId),
+      ],
+    );
+    _notify();
+  }
+
   Future<void> deleteProject(int projectId) async {
     await _ensureTables();
     await _db.customStatement(
@@ -201,8 +222,13 @@ class ProjectsRepository {
     int? categoryId,
     required DateTime date,
     String? note,
+    bool isAdditionalWork = false,
   }) async {
     await _ensureTables();
+
+    if (isAdditionalWork) {
+      await increaseProjectQuote(projectId: project.id, additionalAmount: amount);
+    }
 
     final txNote = note != null && note.trim().isNotEmpty
         ? 'Project: ${project.title} (${note.trim()})'
@@ -226,8 +252,8 @@ class ProjectsRepository {
     final now = DateTime.now();
     await _db.customInsert(
       '''
-      INSERT INTO project_payments (project_id, transaction_id, amount, date, note, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO project_payments (project_id, transaction_id, amount, date, note, is_additional_work, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ''',
       variables: [
         Variable.withInt(project.id),
@@ -235,6 +261,7 @@ class ProjectsRepository {
         Variable.withInt(amount.paise),
         Variable.withString(date.toIso8601String()),
         Variable.withString(note?.trim() ?? ''),
+        Variable.withInt(isAdditionalWork ? 1 : 0),
         Variable.withString(now.toIso8601String()),
       ],
     );
@@ -242,7 +269,8 @@ class ProjectsRepository {
     // Check if fully paid
     final existing = await getPaymentsForProject(project.id);
     final totalReceived = existing.fold<int>(0, (sum, p) => sum + p.amount.paise);
-    if (totalReceived >= project.quoteAmount.paise && project.status == ProjectStatus.active) {
+    final effectiveQuote = project.quoteAmount.paise + (isAdditionalWork ? amount.paise : 0);
+    if (totalReceived >= effectiveQuote && project.status == ProjectStatus.active) {
       await updateProjectStatus(project.id, ProjectStatus.completed);
     } else {
       _notify();
@@ -285,13 +313,19 @@ class ProjectsRepository {
     required int transactionId,
     required DateTime date,
     String? note,
+    bool isAdditionalWork = false,
   }) async {
     await _ensureTables();
+
+    if (isAdditionalWork) {
+      await increaseProjectQuote(projectId: project.id, additionalAmount: amount);
+    }
+
     final now = DateTime.now();
     await _db.customInsert(
       '''
-      INSERT INTO project_payments (project_id, transaction_id, amount, date, note, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO project_payments (project_id, transaction_id, amount, date, note, is_additional_work, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ''',
       variables: [
         Variable.withInt(project.id),
@@ -299,13 +333,15 @@ class ProjectsRepository {
         Variable.withInt(amount.paise),
         Variable.withString(date.toIso8601String()),
         Variable.withString(note?.trim() ?? ''),
+        Variable.withInt(isAdditionalWork ? 1 : 0),
         Variable.withString(now.toIso8601String()),
       ],
     );
 
     final existing = await getPaymentsForProject(project.id);
     final totalReceived = existing.fold<int>(0, (sum, p) => sum + p.amount.paise);
-    if (totalReceived >= project.quoteAmount.paise && project.status == ProjectStatus.active) {
+    final effectiveQuote = project.quoteAmount.paise + (isAdditionalWork ? amount.paise : 0);
+    if (totalReceived >= effectiveQuote && project.status == ProjectStatus.active) {
       await updateProjectStatus(project.id, ProjectStatus.completed);
     } else {
       _notify();
